@@ -34,6 +34,13 @@ BACKEND_OBJS := \
 all: $(TARGET)
 
 # ============================================================
+# Frontend (BNFC + parser/lexer)
+# ============================================================
+
+frontend:
+	$(MAKE) -C $(FRONTEND_DIR)
+
+# ============================================================
 # Kompilacja plików C++
 # ============================================================
 
@@ -62,6 +69,7 @@ $(TARGET): frontend $(BACKEND_OBJS)
 
 clean:
 	rm -f $(TARGET) $(SRC_DIR)/*.o
+	$(MAKE) -C $(FRONTEND_DIR) clean || true
 
 distclean: clean
 	rm -rf $(FRONTEND_DIR)
