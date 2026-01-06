@@ -85,12 +85,23 @@ void X86Emitter::emitFunction(std::ostream& out, const FunctionIR& f, const Allo
     const int savedCount = (int)saved.size();
     const int localsBytes = 4 * a.spillSlots;
 
+    // Chcemy: %esp 16-byte aligned po prologu (i między instrukcjami),
+    // żeby łatwo doalignować call’e.
+    int frameBytes = localsBytes;
+
+    // Po wejściu do funkcji (po call) stos jest przesunięty o 4 bajty (return address).
+    // Po: push %ebp (4) -> +4, po pushach callee-saved -> +4*savedCount,
+    // po sub frameBytes -> +frameBytes.
+    // Dobieramy alignBytes tak, by finalnie esp % 16 == 0.
+    int alignBytes = (16 - ((8 + 4 * savedCount + frameBytes) % 16)) % 16;
+    frameBytes += alignBytes;
+
     out << ".globl " << f.name << "\n";
     out << f.name << ":\n";
     out << "  pushl %ebp\n";
     out << "  movl %esp, %ebp\n";
     for (auto pr : saved) out << "  pushl " << r(pr) << "\n";
-    if (localsBytes > 0) out << "  subl $" << localsBytes << ", %esp\n";
+    if (frameBytes > 0) out << "  subl $" << frameBytes << ", %esp\n";
 
     // params: [ebp+8], [ebp+12], ...
     for (int i = 0; i < (int)f.params.size(); ++i)
@@ -229,6 +240,11 @@ void X86Emitter::emitFunction(std::ostream& out, const FunctionIR& f, const Allo
 
             case Instr::Kind::Call:
             {
+                int n = (int)ins.args.size();
+                int argBytes = 4 * n;
+                int pad = (16 - (argBytes % 16)) % 16;
+                if (pad) out << "  subl $" << pad << ", %esp\n";
+
                 for (int i = (int)ins.args.size() - 1; i >= 0; --i)
                 {
                     int v = ins.args[(size_t)i].id;
@@ -243,8 +259,9 @@ void X86Emitter::emitFunction(std::ostream& out, const FunctionIR& f, const Allo
 
                 out << "  call " << ins.callee << "\n";
 
-                if (!ins.args.empty())
-                    out << "  addl $" << (4 * (int)ins.args.size()) << ", %esp\n";
+                int cleanup = argBytes + pad;
+                if (cleanup) out << "  addl $" << cleanup << ", %esp\n";
+
 
                 if (ins.dst) storeRegToVReg(out, a, PhysReg::EAX, ins.dst->id, savedCount);
             }
