@@ -54,3 +54,18 @@ char* readString(void) {
     buf[len] = '\0';
     return buf;
 }
+
+int __divsi3(int a, int b) {
+    if (b == 0) {
+        error();
+    }
+    return a / b;
+}
+
+int __modsi3(int a, int b) {
+    if (b == 0) {
+        error();
+    }
+    return a % b;
+}
+
