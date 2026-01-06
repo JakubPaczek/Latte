@@ -240,32 +240,41 @@ void X86Emitter::emitFunction(std::ostream& out, const FunctionIR& f, const Allo
 
             case Instr::Kind::Call:
             {
-                int n = (int)ins.args.size();
-                int argBytes = 4 * n;
-                int pad = (16 - (argBytes % 16)) % 16;
+                const int n = (int)ins.args.size();
+                const int argBytes = 4 * n;
+
+                // 16-byte alignment przed call
+                const int pad = (16 - (argBytes % 16)) % 16;
                 if (pad) out << "  subl $" << pad << ", %esp\n";
 
-                for (int i = (int)ins.args.size() - 1; i >= 0; --i)
+                // push args (cdecl): od końca
+                for (int i = n - 1; i >= 0; --i)
                 {
                     int v = ins.args[(size_t)i].id;
-                    std::unordered_set<PhysReg> ex;
-                    auto ta = loadVRegToReg(out, a, v, ex, savedCount);
+                    const auto& loc = a.loc[(size_t)v];
 
-                    out << "  pushl " << r(ta.pr) << "\n";
-
-                    // KLUCZ: jeśli load zrobił push, zdejmij go natychmiast
-                    if (ta.saved) out << "  popl " << r(ta.pr) << "\n";
+                    if (loc.isReg)
+                    {
+                        out << "  pushl " << r(loc.reg) << "\n";
+                    }
+                    else
+                    {
+                        int off = spillOffsetBytes(loc.spillSlot, savedCount);
+                        out << "  pushl " << off << "(%ebp)\n";
+                    }
                 }
 
                 out << "  call " << ins.callee << "\n";
 
-                int cleanup = argBytes + pad;
+                // caller cleans args + pad
+                const int cleanup = argBytes + pad;
                 if (cleanup) out << "  addl $" << cleanup << ", %esp\n";
 
-
-                if (ins.dst) storeRegToVReg(out, a, PhysReg::EAX, ins.dst->id, savedCount);
+                if (ins.dst)
+                    storeRegToVReg(out, a, PhysReg::EAX, ins.dst->id, savedCount);
             }
             break;
+
 
 
 
