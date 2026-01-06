@@ -154,20 +154,21 @@ static void linkX86(const std::string& asmPath, const std::string& exePath)
 #ifdef _WIN32
     (void)asmPath;
     (void)exePath;
-    // Na Windowsie nie linkujemy i386 ELF (to będzie robione na students/WSL).
     return;
 #else
-    std::string cmd1 = "gcc -m32 -o \"" + exePath + "\" \"" + asmPath + "\" lib/runtime.o";
-    int rc = std::system(cmd1.c_str());
+    // -no-pie: żeby nie robić PIE i nie dostawać DT_TEXTREL warningów
+    // >link.log 2>&1: żeby nie psuć "OK" jako pierwszej linii stderr
+    std::string log = exePath + ".link.log";
+    std::string cmd =
+        "gcc -m32 -no-pie -o \"" + exePath + "\" \"" + asmPath + "\" lib/runtime.o"
+        " >\"" + log + "\" 2>&1";
+
+    int rc = std::system(cmd.c_str());
     if (rc != 0)
-    {
-        std::string cmd2 = "gcc -m32 -no-pie -o \"" + exePath + "\" \"" + asmPath + "\" lib/runtime.o";
-        rc = std::system(cmd2.c_str());
-        if (rc != 0)
-            throw std::runtime_error("Link failed (gcc). Tried:\n" + cmd1 + "\n" + cmd2);
-    }
+        throw std::runtime_error("Link failed. See: " + log);
 #endif
 }
+
 
 
 int main(int argc, char* argv[])
@@ -208,16 +209,11 @@ int main(int argc, char* argv[])
         TypeChecker checker;
         checker.checkProgram(program);
 
-        // in case of success:
-        // std::cerr << "OK\n";
-
         // end of frontend
 
-        // =========================
-        // BACKEND: IR -> RA -> x86
-        // =========================
 
-        ModuleIR mod = buildModuleIR(program); // <- DOSTOSUJ do swojej nazwy
+        // BACKEND: IR -> RA -> x86
+        ModuleIR mod = buildModuleIR(program);
 
         const std::string outPath = makeOutPath(filename);
         FILE* out = std::fopen(outPath.c_str(), "w");
