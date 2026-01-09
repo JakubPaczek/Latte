@@ -201,7 +201,7 @@ namespace {
 
             if (auto* n = dynamic_cast<ELitInt*>(e))
             {
-                VReg r = f.newVReg();
+                VReg r = f.newVReg(VType::I32);
                 emit(Instr::loadImm(r, (long)n->integer_));
                 return { r, Ty::Int };
             }
@@ -222,8 +222,7 @@ namespace {
             {
                 std::string raw = unescapeBnfcString(s->string_);
                 int id = g.internString(raw);
-                VReg dst = f.newVReg();
-                // string literal jako: call __latte_str_ID()
+                VReg dst = f.newVReg(VType::PTR); // albo newTmp(Ty::Str)
                 emit(Instr::call(dst, g.strGetterName(id), {}));
                 return { dst, Ty::Str };
             }
@@ -254,7 +253,7 @@ namespace {
                 }
                 else
                 {
-                    VReg dst = f.newVReg();
+                    VReg dst = f.newVReg(vtypeFromTy(rt)); // jeśli rt==Str -> PTR
                     emit(Instr::call(dst, name, std::move(args)));
                     return { dst, rt };
                 }
@@ -262,14 +261,14 @@ namespace {
             if (auto* neg = dynamic_cast<Neg*>(e))
             {
                 Val x = genExpr((Expr*)neg->expr_);
-                VReg dst = f.newVReg();
+                VReg dst = f.newVReg(VType::I32);
                 emit(Instr::un(dst, UnOp::Neg, x.v));
                 return { dst, Ty::Int };
             }
             if (auto* nt = dynamic_cast<Not*>(e))
             {
                 Val x = genExpr((Expr*)nt->expr_);
-                VReg dst = f.newVReg();
+                VReg dst = newTmp(Ty::Bool);
                 emit(Instr::un(dst, UnOp::Not, x.v));
                 return { dst, Ty::Bool };
             }
@@ -316,7 +315,7 @@ namespace {
                     if (a.t == Ty::Str || b.t == Ty::Str)
                     {
                         // Latte: konkatenacja stringów operatorem +
-                        VReg dst = f.newVReg();
+                        VReg dst = f.newVReg(VType::PTR);
                         emit(Instr::call(dst, "__latte_concat", { a.v, b.v }));
                         return { dst, Ty::Str };
                     }
@@ -337,7 +336,7 @@ namespace {
                 // EQU/NE dla stringów robimy przez strcmp == 0
                 if ((dynamic_cast<EQU*>(rel->relop_) || dynamic_cast<NE*>(rel->relop_)) && (a.t == Ty::Str || b.t == Ty::Str))
                 {
-                    VReg cmpRes = f.newVReg();
+                    VReg cmpRes = f.newVReg(VType::I32);
                     emit(Instr::call(cmpRes, "strcmp", { a.v, b.v }));
                     VReg zero = makeConst(0);
                     VReg dst = f.newVReg();
@@ -435,7 +434,7 @@ namespace {
                 {
                     if (auto* ni = dynamic_cast<NoInit*>(it))
                     {
-                        VReg v = f.newVReg();
+                        VReg v = f.newVReg(vtypeFromTy(t));
                         defineVar(ni->ident_, { v, t });
                         if (t == Ty::Int || t == Ty::Bool)
                         {
@@ -454,7 +453,7 @@ namespace {
                     }
                     else if (auto* ini = dynamic_cast<Init*>(it))
                     {
-                        VReg v = f.newVReg();
+                        VReg v = f.newVReg(vtypeFromTy(t));
                         defineVar(ini->ident_, { v, t });
                         Val rhs = genExpr(ini->expr_);
                         emit(Instr::mov(v, rhs.v));
@@ -757,9 +756,10 @@ ModuleIR buildModuleIR(Program* program)
                 for (Arg* a : *fn->listarg_)
                 {
                     Ar* ar = asAr(a);
-                    VReg pv = cg.f.newVReg();
+                    Ty pt = tyFromAst(ar->type_);
+                    VReg pv = cg.f.newVReg(cg.vtypeFromTy(pt));
                     cg.f.params.push_back(pv);
-                    cg.defineVar(ar->ident_, { pv, tyFromAst(ar->type_) });
+                    cg.defineVar(ar->ident_, { pv, pt });
                 }
             }
 

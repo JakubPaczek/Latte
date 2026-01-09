@@ -219,6 +219,14 @@ std::vector<RegAllocator::Interval> RegAllocator::buildIntervals(
         }
     }
 
+    // params live from entry
+    for (const auto& p : f.params)
+    {
+        int v = p.id;
+        if (v < 0 || v >= V) continue;
+        if (end[v] >= 0) start[v] = 0;   // only if parameter is actually used
+    }
+
     std::vector<Interval> intervals;
     intervals.reserve((size_t)V);
 
@@ -254,10 +262,10 @@ bool RegAllocator::isAllocable(PhysReg r)
 
 std::vector<PhysReg> RegAllocator::allRegs()
 {
-    // All allocable regs we currently model (caller-saved on x64): RCX, RDX, RSI, RDI.
-    // RBX is also allocable (callee-saved). // limited reg set
-    return { PhysReg::ECX, PhysReg::EDX, PhysReg::ESI, PhysReg::EDI, PhysReg::EBX };
+    // avoid EDX: clobbered by cdq/idiv
+    return { PhysReg::ECX, PhysReg::ESI, PhysReg::EDI, PhysReg::EBX };
 }
+
 
 std::vector<PhysReg> RegAllocator::calleeSavedRegs()
 {

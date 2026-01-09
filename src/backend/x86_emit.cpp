@@ -185,12 +185,35 @@ void X86Emitter::emitFunction(std::ostream& out, const FunctionIR& f, const Allo
     const int pcount = (int)f.params.size();
     const int regCount = std::min(pcount, 6);
 
-    for (int i = regCount - 1; i >= 0; --i)
+    if (regCount > 0)
     {
-        int v = f.params[(size_t)i].id;
-        bool isPtr = (vtypeOf(f, v) == VType::PTR);
-        moveToHome(isPtr ? kArgRegs64[i] : kArgRegs32[i], v, isPtr);
+        const int tempRaw = 8 * regCount;
+        const int tempBytes = ((tempRaw + 15) / 16) * 16;
+        out << "  subq $" << tempBytes << ", %rsp\n";
+
+        // save incoming arg regs to temp slots (prevents clobber on swaps)
+        for (int i = 0; i < regCount; ++i)
+        {
+            int v = f.params[(size_t)i].id;
+            bool isPtr = (vtypeOf(f, v) == VType::PTR);
+            int off = 8 * i;
+            std::string dst = std::to_string(off) + "(%rsp)";
+            out << "  " << (isPtr ? "movq " : "movl ")
+                << (isPtr ? kArgRegs64[i] : kArgRegs32[i]) << ", " << dst << "\n";
+        }
+
+        // move from temp slots to homes
+        for (int i = 0; i < regCount; ++i)
+        {
+            int v = f.params[(size_t)i].id;
+            bool isPtr = (vtypeOf(f, v) == VType::PTR);
+            int off = 8 * i;
+            moveToHome(std::to_string(off) + "(%rsp)", v, isPtr);
+        }
+
+        out << "  addq $" << tempBytes << ", %rsp\n";
     }
+
 
     for (int i = 6; i < pcount; ++i)
     {
