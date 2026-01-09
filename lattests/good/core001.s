@@ -4,12 +4,8 @@
 .extern error
 .extern readInt
 .extern readString
-.extern strlen
-.extern malloc
-.extern memcpy
+.extern __latte_concat
 .extern strcmp
-.extern __divsi3
-.extern __modsi3
 .section .rodata
 .LC0:
   .asciz ""
@@ -20,102 +16,81 @@
 .LC3:
   .asciz "/* world"
 .text
+.globl __latte_str_0
 __latte_str_0:
-  movl $.LC0, %eax
+  leaq .LC0(%rip), %rax
   ret
+.globl __latte_str_1
 __latte_str_1:
-  movl $.LC1, %eax
+  leaq .LC1(%rip), %rax
   ret
+.globl __latte_str_2
 __latte_str_2:
-  movl $.LC2, %eax
+  leaq .LC2(%rip), %rax
   ret
+.globl __latte_str_3
 __latte_str_3:
-  movl $.LC3, %eax
-  ret
-__latte_concat:
-  pushl %ebp
-  movl %esp, %ebp
-  pushl %ebx
-  pushl %esi
-  pushl %edi
-  movl 8(%ebp), %esi
-  movl 12(%ebp), %edi
-  pushl %esi
-  call strlen
-  addl $4, %esp
-  movl %eax, %ebx
-  pushl %edi
-  call strlen
-  addl $4, %esp
-  movl %eax, %ecx
-  leal 1(%ebx,%ecx), %eax
-  pushl %eax
-  call malloc
-  addl $4, %esp
-  movl %eax, %edx
-  pushl %ebx
-  pushl %esi
-  pushl %edx
-  call memcpy
-  addl $12, %esp
-  leal (%edx,%ebx), %eax
-  leal 1(%ecx), %ecx
-  pushl %ecx
-  pushl %edi
-  pushl %eax
-  call memcpy
-  addl $12, %esp
-  movl %edx, %eax
-  popl %edi
-  popl %esi
-  popl %ebx
-  popl %ebp
+  leaq .LC3(%rip), %rax
   ret
 .globl main
 main:
-  pushl %ebp
-  movl %esp, %ebp
-  pushl %ebx
-  pushl %esi
+  pushq %rbp
+  movq %rsp, %rbp
 .L0:
   movl $10, %ecx
-  pushl %ecx
+  subq $16, %rsp
+  movl %ecx, 0(%rsp)
+  movl 0(%rsp), %edi
+  addq $16, %rsp
   call fac
-  addl $4, %esp
   movl %eax, %edx
-  pushl %edx
+  subq $16, %rsp
+  movl %edx, 0(%rsp)
+  movl 0(%rsp), %edi
+  addq $16, %rsp
   call printInt
-  addl $4, %esp
   movl $10, %ecx
-  pushl %ecx
+  subq $16, %rsp
+  movl %ecx, 0(%rsp)
+  movl 0(%rsp), %edi
+  addq $16, %rsp
   call rfac
-  addl $4, %esp
   movl %eax, %edx
-  pushl %edx
+  subq $16, %rsp
+  movl %edx, 0(%rsp)
+  movl 0(%rsp), %edi
+  addq $16, %rsp
   call printInt
-  addl $4, %esp
   movl $10, %ecx
-  pushl %ecx
+  subq $16, %rsp
+  movl %ecx, 0(%rsp)
+  movl 0(%rsp), %edi
+  addq $16, %rsp
   call mfac
-  addl $4, %esp
   movl %eax, %edx
-  pushl %edx
+  subq $16, %rsp
+  movl %edx, 0(%rsp)
+  movl 0(%rsp), %edi
+  addq $16, %rsp
   call printInt
-  addl $4, %esp
   movl $10, %ecx
-  pushl %ecx
+  subq $16, %rsp
+  movl %ecx, 0(%rsp)
+  movl 0(%rsp), %edi
+  addq $16, %rsp
   call ifac
-  addl $4, %esp
   movl %eax, %edx
-  pushl %edx
+  subq $16, %rsp
+  movl %edx, 0(%rsp)
+  movl 0(%rsp), %edi
+  addq $16, %rsp
   call printInt
-  addl $4, %esp
   call __latte_str_0
   movl %eax, %ecx
   movl $10, %ecx
   movl %ecx, %edx
   movl $1, %ecx
-  movl %ecx, %ebx
+  movl %ecx, %esi
   jmp .L1
 .L1:
   movl $0, %ecx
@@ -123,99 +98,105 @@ main:
   cmpl %ecx, %eax
   setg %al
   movzbl %al, %eax
-  movl %eax, %esi
-  testl %esi, %esi
+  movl %eax, %edi
+  testl %edi, %edi
   je .L3
   jmp .L2
 .L2:
-  movl %ebx, %eax
+  movl %esi, %eax
   imull %edx, %eax
   movl %eax, %ecx
-  movl %ecx, %ebx
+  movl %ecx, %esi
   movl $1, %ecx
   movl %edx, %eax
   subl %ecx, %eax
-  movl %eax, %esi
-  movl %esi, %edx
+  movl %eax, %edi
+  movl %edi, %edx
   jmp .L1
 .L3:
-  pushl %ebx
+  subq $16, %rsp
+  movl %esi, 0(%rsp)
+  movl 0(%rsp), %edi
+  addq $16, %rsp
   call printInt
-  addl $4, %esp
   call __latte_str_1
   movl %eax, %ecx
   movl $60, %edx
-  pushl %edx
-  pushl %ecx
+  subq $16, %rsp
+  movl %ecx, 0(%rsp)
+  movl %edx, 8(%rsp)
+  movl 0(%rsp), %edi
+  movl 8(%rsp), %esi
+  addq $16, %rsp
   call repStr
-  addl $8, %esp
-  movl %eax, %ebx
-  pushl %ebx
+  movl %eax, %esi
+  subq $16, %rsp
+  movl %esi, 0(%rsp)
+  movl 0(%rsp), %edi
+  addq $16, %rsp
   call printString
-  addl $4, %esp
   call __latte_str_2
   movl %eax, %ecx
-  pushl %ecx
+  subq $16, %rsp
+  movl %ecx, 0(%rsp)
+  movl 0(%rsp), %edi
+  addq $16, %rsp
   call printString
-  addl $4, %esp
   call __latte_str_3
   movl %eax, %ecx
-  pushl %ecx
+  subq $16, %rsp
+  movl %ecx, 0(%rsp)
+  movl 0(%rsp), %edi
+  addq $16, %rsp
   call printString
-  addl $4, %esp
   movl $0, %ecx
   movl %ecx, %eax
-  popl %esi
-  popl %ebx
-  popl %ebp
+  popq %rbp
   ret
 .globl fac
 fac:
-  pushl %ebp
-  movl %esp, %ebp
-  pushl %ebx
-  pushl %esi
-  movl 8(%ebp), %ebx
+  pushq %rbp
+  movq %rsp, %rbp
+  movl %edi, %esi
 .L4:
   movl $0, %ecx
   movl $0, %edx
-  movl $1, %ebx
-  movl %ebx, %ecx
-  movl %ebx, %edx
+  movl $1, %esi
+  movl %esi, %ecx
+  movl %esi, %edx
   jmp .L5
 .L5:
-  movl $0, %ebx
+  movl $0, %esi
   movl %edx, %eax
-  cmpl %ebx, %eax
+  cmpl %esi, %eax
   setg %al
   movzbl %al, %eax
-  movl %eax, %esi
-  testl %esi, %esi
+  movl %eax, %edi
+  testl %edi, %edi
   je .L7
   jmp .L6
 .L6:
   movl %ecx, %eax
   imull %edx, %eax
-  movl %eax, %ebx
-  movl %ebx, %ecx
-  movl $1, %ebx
-  movl %edx, %eax
-  subl %ebx, %eax
   movl %eax, %esi
-  movl %esi, %edx
+  movl %esi, %ecx
+  movl $1, %esi
+  movl %edx, %eax
+  subl %esi, %eax
+  movl %eax, %edi
+  movl %edi, %edx
   jmp .L5
 .L7:
   movl %ecx, %eax
-  popl %esi
-  popl %ebx
-  popl %ebp
+  popq %rbp
   ret
 .globl rfac
 rfac:
-  pushl %ebp
-  movl %esp, %ebp
-  pushl %ebx
-  movl 8(%ebp), %ebx
+  pushq %rbp
+  movq %rsp, %rbp
+  pushq %rbx
+  subq $8, %rsp
+  movl %edi, %ebx
 .L8:
   movl $0, %ecx
   movl %ebx, %eax
@@ -229,32 +210,37 @@ rfac:
 .L9:
   movl $1, %ecx
   movl %ecx, %eax
-  popl %ebx
-  popl %ebp
+  addq $8, %rsp
+  popq %rbx
+  popq %rbp
   ret
 .L10:
   movl $1, %ecx
   movl %ebx, %eax
   subl %ecx, %eax
   movl %eax, %edx
-  pushl %edx
+  subq $16, %rsp
+  movl %edx, 0(%rsp)
+  movl 0(%rsp), %edi
+  addq $16, %rsp
   call rfac
-  addl $4, %esp
   movl %eax, %ecx
   movl %ebx, %eax
   imull %ecx, %eax
   movl %eax, %edx
   movl %edx, %eax
-  popl %ebx
-  popl %ebp
+  addq $8, %rsp
+  popq %rbx
+  popq %rbp
   ret
 .L11:
 .globl mfac
 mfac:
-  pushl %ebp
-  movl %esp, %ebp
-  pushl %ebx
-  movl 8(%ebp), %ebx
+  pushq %rbp
+  movq %rsp, %rbp
+  pushq %rbx
+  subq $8, %rsp
+  movl %edi, %ebx
 .L12:
   movl $0, %ecx
   movl %ebx, %eax
@@ -268,32 +254,37 @@ mfac:
 .L13:
   movl $1, %ecx
   movl %ecx, %eax
-  popl %ebx
-  popl %ebp
+  addq $8, %rsp
+  popq %rbx
+  popq %rbp
   ret
 .L14:
   movl $1, %ecx
   movl %ebx, %eax
   subl %ecx, %eax
   movl %eax, %edx
-  pushl %edx
+  subq $16, %rsp
+  movl %edx, 0(%rsp)
+  movl 0(%rsp), %edi
+  addq $16, %rsp
   call nfac
-  addl $4, %esp
   movl %eax, %ecx
   movl %ebx, %eax
   imull %ecx, %eax
   movl %eax, %edx
   movl %edx, %eax
-  popl %ebx
-  popl %ebp
+  addq $8, %rsp
+  popq %rbx
+  popq %rbp
   ret
 .L15:
 .globl nfac
 nfac:
-  pushl %ebp
-  movl %esp, %ebp
-  pushl %ebx
-  movl 8(%ebp), %ebx
+  pushq %rbp
+  movq %rsp, %rbp
+  pushq %rbx
+  subq $8, %rsp
+  movl %edi, %ebx
 .L16:
   movl $0, %ecx
   movl %ebx, %eax
@@ -309,146 +300,145 @@ nfac:
   movl %ebx, %eax
   subl %ecx, %eax
   movl %eax, %edx
-  pushl %edx
+  subq $16, %rsp
+  movl %edx, 0(%rsp)
+  movl 0(%rsp), %edi
+  addq $16, %rsp
   call mfac
-  addl $4, %esp
   movl %eax, %ecx
   movl %ecx, %eax
   imull %ebx, %eax
   movl %eax, %edx
   movl %edx, %eax
-  popl %ebx
-  popl %ebp
+  addq $8, %rsp
+  popq %rbx
+  popq %rbp
   ret
 .L18:
   movl $1, %ecx
   movl %ecx, %eax
-  popl %ebx
-  popl %ebp
+  addq $8, %rsp
+  popq %rbx
+  popq %rbp
   ret
 .L19:
 .globl ifac
 ifac:
-  pushl %ebp
-  movl %esp, %ebp
-  pushl %ebx
-  movl 8(%ebp), %edx
+  pushq %rbp
+  movq %rsp, %rbp
+  movl %edi, %edx
 .L20:
   movl $1, %ecx
-  pushl %edx
-  pushl %ecx
+  subq $16, %rsp
+  movl %ecx, 0(%rsp)
+  movl %edx, 8(%rsp)
+  movl 0(%rsp), %edi
+  movl 8(%rsp), %esi
+  addq $16, %rsp
   call ifac2f
-  addl $8, %esp
-  movl %eax, %ebx
-  movl %ebx, %eax
-  popl %ebx
-  popl %ebp
+  movl %eax, %esi
+  movl %esi, %eax
+  popq %rbp
   ret
 .globl ifac2f
 ifac2f:
-  pushl %ebp
-  movl %esp, %ebp
-  pushl %ebx
-  pushl %esi
-  pushl %edi
-  subl $4, %esp
-  movl 8(%ebp), %ebx
-  movl 12(%ebp), %eax
-  movl %eax, -16(%ebp)
+  pushq %rbp
+  movq %rsp, %rbp
+  pushq %rbx
+  subq $24, %rsp
+  movl %esi, -16(%rbp)
+  movl %edi, %ecx
 .L21:
-  movl %ebx, %eax
-  cmpl -16(%ebp), %eax
+  movl %ecx, %eax
+  cmpl -16(%rbp), %eax
   sete %al
   movzbl %al, %eax
-  movl %eax, %ecx
-  testl %ecx, %ecx
+  movl %eax, %edx
+  testl %edx, %edx
   je .L23
   jmp .L22
 .L22:
-  movl %ebx, %eax
-  addl $4, %esp
-  popl %edi
-  popl %esi
-  popl %ebx
-  popl %ebp
+  movl %ecx, %eax
+  addq $24, %rsp
+  popq %rbx
+  popq %rbp
   ret
 .L23:
-  movl %ebx, %eax
-  cmpl -16(%ebp), %eax
+  movl %ecx, %eax
+  cmpl -16(%rbp), %eax
   setg %al
   movzbl %al, %eax
-  movl %eax, %ecx
-  testl %ecx, %ecx
+  movl %eax, %edx
+  testl %edx, %edx
   je .L25
   jmp .L24
 .L24:
-  movl $1, %ecx
-  movl %ecx, %eax
-  addl $4, %esp
-  popl %edi
-  popl %esi
-  popl %ebx
-  popl %ebp
+  movl $1, %edx
+  movl %edx, %eax
+  addq $24, %rsp
+  popq %rbx
+  popq %rbp
   ret
 .L25:
-  movl $0, %edi
-  movl %ebx, %eax
-  addl -16(%ebp), %eax
-  movl %eax, %ecx
-  movl $2, %edx
-  pushl %edx
-  pushl %ecx
-  call __divsi3
-  addl $8, %esp
-  movl %eax, %esi
-  movl %esi, %edi
-  pushl %edi
-  pushl %ebx
+  movl $0, %ebx
+  movl %ecx, %eax
+  addl -16(%rbp), %eax
+  movl %eax, %edx
+  movl $2, %esi
+  movl %edx, %eax
+  movl %edx, %eax
+  cdq
+  idivl %esi
+  movl %eax, %edi
+  movl %eax, %edi
+  movl %edi, %ebx
+  subq $16, %rsp
+  movl %ecx, 0(%rsp)
+  movl %ebx, 8(%rsp)
+  movl 0(%rsp), %edi
+  movl 8(%rsp), %esi
+  addq $16, %rsp
   call ifac2f
-  addl $8, %esp
-  movl %eax, %esi
+  movl %eax, -24(%rbp)
   movl $1, %ecx
-  movl %edi, %eax
+  movl %ebx, %eax
   addl %ecx, %eax
   movl %eax, %edx
-  pushl %edx
-  movl -16(%ebp), %edx
-  pushl %edx
-  popl %edx
-  pushl %edx
+  subq $16, %rsp
+  movl %edx, 0(%rsp)
+  movl -16(%rbp), %r11d
+  movl %r11d, 8(%rsp)
+  movl 0(%rsp), %edi
+  movl 8(%rsp), %esi
+  addq $16, %rsp
   call ifac2f
-  addl $8, %esp
   movl %eax, %ecx
-  movl %esi, %eax
+  movl -24(%rbp), %eax
   imull %ecx, %eax
   movl %eax, %edx
   movl %edx, %eax
-  addl $4, %esp
-  popl %edi
-  popl %esi
-  popl %ebx
-  popl %ebp
+  addq $24, %rsp
+  popq %rbx
+  popq %rbp
   ret
 .globl repStr
 repStr:
-  pushl %ebp
-  movl %esp, %ebp
-  pushl %ebx
-  pushl %esi
-  pushl %edi
-  subl $4, %esp
-  movl 8(%ebp), %edi
-  movl 12(%ebp), %esi
+  pushq %rbp
+  movq %rsp, %rbp
+  pushq %rbx
+  subq $24, %rsp
+  movl %esi, -16(%rbp)
+  movl %edi, -24(%rbp)
 .L26:
   call __latte_str_0
   movl %eax, %ecx
-  movl %ecx, -16(%ebp)
+  movl %ecx, %edx
   movl $0, %ecx
   movl %ecx, %ebx
   jmp .L27
 .L27:
   movl %ebx, %eax
-  cmpl %esi, %eax
+  cmpl -16(%rbp), %eax
   setl %al
   movzbl %al, %eax
   movl %eax, %ecx
@@ -456,26 +446,25 @@ repStr:
   je .L29
   jmp .L28
 .L28:
-  pushl %edi
-  pushl %edx
-  movl -16(%ebp), %edx
-  pushl %edx
-  popl %edx
+  subq $16, %rsp
+  movl %edx, 0(%rsp)
+  movl -24(%rbp), %r11d
+  movl %r11d, 8(%rsp)
+  movl 0(%rsp), %edi
+  movl 8(%rsp), %esi
+  addq $16, %rsp
   call __latte_concat
-  addl $8, %esp
   movl %eax, %ecx
-  movl %ecx, -16(%ebp)
+  movl %ecx, %edx
   movl $1, %ecx
   movl %ebx, %eax
   addl %ecx, %eax
-  movl %eax, %edx
-  movl %edx, %ebx
+  movl %eax, %esi
+  movl %esi, %ebx
   jmp .L27
 .L29:
-  movl -16(%ebp), %eax
-  addl $4, %esp
-  popl %edi
-  popl %esi
-  popl %ebx
-  popl %ebp
+  movl %edx, %eax
+  addq $24, %rsp
+  popq %rbx
+  popq %rbp
   ret

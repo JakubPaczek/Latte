@@ -3,8 +3,33 @@
 #include <stdexcept>
 #include <algorithm>
 
+static constexpr const char* kArgRegs64[6] = { "%rdi", "%rsi", "%rdx", "%rcx", "%r8",  "%r9" };
+static constexpr const char* kArgRegs32[6] = { "%edi", "%esi", "%edx", "%ecx", "%r8d", "%r9d" };
 
-const char* X86Emitter::r(PhysReg pr)
+static inline bool isRegOp(const std::string& s) { return !s.empty() && s[0] == '%'; }
+
+static inline VType vtypeOf(const FunctionIR& f, int vregId)
+{
+    if (vregId < 0) return VType::I32;
+    if ((size_t)vregId >= f.vtypes.size()) return VType::I32; // default
+    return f.vtypes[(size_t)vregId];
+}
+
+const char* X86Emitter::r64(PhysReg pr)
+{
+    switch (pr)
+    {
+    case PhysReg::EAX: return "%rax";
+    case PhysReg::ECX: return "%rcx";
+    case PhysReg::EDX: return "%rdx";
+    case PhysReg::EBX: return "%rbx";
+    case PhysReg::ESI: return "%rsi";
+    case PhysReg::EDI: return "%rdi";
+    default: return "<?>"; // unknown reg
+    }
+}
+
+const char* X86Emitter::r32(PhysReg pr)
 {
     switch (pr)
     {
@@ -14,19 +39,20 @@ const char* X86Emitter::r(PhysReg pr)
     case PhysReg::EBX: return "%ebx";
     case PhysReg::ESI: return "%esi";
     case PhysReg::EDI: return "%edi";
-    default: return "<?>";
+    default: return "<?>"; // unknown reg
     }
 }
 
 bool X86Emitter::isCalleeSaved(PhysReg pr)
 {
-    return pr == PhysReg::EBX || pr == PhysReg::ESI || pr == PhysReg::EDI;
+    // SysV AMD64 callee-saved: RBX, RBP, R12-R15.
+    return pr == PhysReg::EBX;
 }
 
 int X86Emitter::spillOffsetBytes(int spillSlot, int savedCount)
 {
-    const int savedBytes = 4 * savedCount;
-    return -(savedBytes + 4 + 4 * spillSlot);
+    const int savedBytes = 8 * savedCount;
+    return -(savedBytes + 8 + 8 * spillSlot);
 }
 
 PhysReg X86Emitter::pickScratch(const std::unordered_set<PhysReg>& exclude)
@@ -37,6 +63,7 @@ PhysReg X86Emitter::pickScratch(const std::unordered_set<PhysReg>& exclude)
 }
 
 X86Emitter::Temp X86Emitter::loadVRegToReg(std::ostream& out,
+    const FunctionIR& f,
     const AllocResult& a,
     int vregId,
     const std::unordered_set<PhysReg>& exclude,
@@ -44,94 +71,141 @@ X86Emitter::Temp X86Emitter::loadVRegToReg(std::ostream& out,
 {
     const auto& loc = a.loc[(size_t)vregId];
     if (loc.isReg)
-    {
         return Temp{ loc.reg, false };
-    }
 
     PhysReg scratch = pickScratch(exclude);
-    out << "  pushl " << r(scratch) << "\n";
+    out << "  pushq " << r64(scratch) << "\n"; // temporary save
+
     int off = spillOffsetBytes(loc.spillSlot, savedCount);
-    out << "  movl " << off << "(%ebp), " << r(scratch) << "\n";
+    if (vtypeOf(f, vregId) == VType::PTR)
+        out << "  movq " << off << "(%rbp), " << r64(scratch) << "\n";
+    else
+        out << "  movl " << off << "(%rbp), " << r32(scratch) << "\n"; // i32 load
+
     return Temp{ scratch, true };
 }
 
 void X86Emitter::storeRegToVReg(std::ostream& out,
+    const FunctionIR& f,
     const AllocResult& a,
     PhysReg valueReg,
     int vregId,
     int savedCount)
 {
     const auto& loc = a.loc[(size_t)vregId];
+    const bool isPtr = (vtypeOf(f, vregId) == VType::PTR);
+
     if (loc.isReg)
     {
         if (loc.reg != valueReg)
         {
-            out << "  movl " << r(valueReg) << ", " << r(loc.reg) << "\n";
+            if (isPtr) out << "  movq " << r64(valueReg) << ", " << r64(loc.reg) << "\n";
+            else       out << "  movl " << r32(valueReg) << ", " << r32(loc.reg) << "\n";
         }
         return;
     }
-    int off = spillOffsetBytes(loc.spillSlot, savedCount);
-    out << "  movl " << r(valueReg) << ", " << off << "(%ebp)\n";
-}
 
+    int off = spillOffsetBytes(loc.spillSlot, savedCount);
+    if (isPtr) out << "  movq " << r64(valueReg) << ", " << off << "(%rbp)\n";
+    else       out << "  movl " << r32(valueReg) << ", " << off << "(%rbp)\n"; // i32 store
+}
 
 void X86Emitter::emitFunction(std::ostream& out, const FunctionIR& f, const AllocResult& a)
 {
     std::vector<PhysReg> saved;
-    for (PhysReg pr : {PhysReg::EBX, PhysReg::ESI, PhysReg::EDI})
-    {
-        if (a.usedCalleeSaved.count(pr)) saved.push_back(pr);
-    }
+    for (PhysReg pr : { PhysReg::EBX })
+        if (a.usedCalleeSaved.count(pr) && isCalleeSaved(pr)) saved.push_back(pr);
+
     const int savedCount = (int)saved.size();
-    const int localsBytes = 4 * a.spillSlots;
 
-    // Chcemy: %esp 16-byte aligned po prologu (i między instrukcjami),
-    // żeby łatwo doalignować call’e.
+    const int localsBytes = 8 * a.spillSlots; // 8B spill slots
     int frameBytes = localsBytes;
-
-    // Po wejściu do funkcji (po call) stos jest przesunięty o 4 bajty (return address).
-    // Po: push %ebp (4) -> +4, po pushach callee-saved -> +4*savedCount,
-    // po sub frameBytes -> +frameBytes.
-    // Dobieramy alignBytes tak, by finalnie esp % 16 == 0.
-    int alignBytes = (16 - ((8 + 4 * savedCount + frameBytes) % 16)) % 16;
-    frameBytes += alignBytes;
+    int padBytes = (16 - ((frameBytes + 8 * savedCount) % 16)) % 16;
+    frameBytes += padBytes;
 
     out << ".globl " << f.name << "\n";
     out << f.name << ":\n";
-    out << "  pushl %ebp\n";
-    out << "  movl %esp, %ebp\n";
-    for (auto pr : saved) out << "  pushl " << r(pr) << "\n";
-    if (frameBytes > 0) out << "  subl $" << frameBytes << ", %esp\n";
+    out << "  pushq %rbp\n";
+    out << "  movq %rsp, %rbp\n";
+    for (auto pr : saved) out << "  pushq " << r64(pr) << "\n";
+    if (frameBytes > 0) out << "  subq $" << frameBytes << ", %rsp\n";
 
-    // params: [ebp+8], [ebp+12], ...
-    for (int i = 0; i < (int)f.params.size(); ++i)
-    {
-        int argOff = 8 + 4 * i;
-        int v = f.params[(size_t)i].id;
-        const auto& loc = a.loc[(size_t)v];
+    auto spillAddr = [&](int vregId) -> std::string {
+        const auto& loc = a.loc[(size_t)vregId];
+        int off = spillOffsetBytes(loc.spillSlot, savedCount);
+        return std::to_string(off) + "(%rbp)";
+        };
+
+    auto opnd64 = [&](int vregId) -> std::string {
+        const auto& loc = a.loc[(size_t)vregId];
+        if (loc.isReg) return std::string(r64(loc.reg));
+        return spillAddr(vregId);
+        };
+
+    auto opnd32 = [&](int vregId) -> std::string {
+        const auto& loc = a.loc[(size_t)vregId];
+        if (loc.isReg) return std::string(r32(loc.reg));
+        return spillAddr(vregId);
+        };
+
+    auto moveToHome = [&](const std::string& srcOp, int vregId, bool isPtr) {
+        const auto& loc = a.loc[(size_t)vregId];
+
         if (loc.isReg)
         {
-            out << "  movl " << argOff << "(%ebp), " << r(loc.reg) << "\n";
+            std::string dst = isPtr ? r64(loc.reg) : r32(loc.reg);
+            if (dst != srcOp)
+                out << "  " << (isPtr ? "movq " : "movl ") << srcOp << ", " << dst << "\n";
         }
         else
         {
-            out << "  movl " << argOff << "(%ebp), %eax\n";
-            int off = spillOffsetBytes(loc.spillSlot, savedCount);
-            out << "  movl %eax, " << off << "(%ebp)\n";
+            std::string dstMem = spillAddr(vregId);
+            if (isRegOp(srcOp))
+            {
+                out << "  " << (isPtr ? "movq " : "movl ") << srcOp << ", " << dstMem << "\n";
+            }
+            else
+            {
+                // mem -> mem via r11 // fixed scratch
+                if (isPtr)
+                {
+                    out << "  movq " << srcOp << ", %r11\n";
+                    out << "  movq %r11, " << dstMem << "\n";
+                }
+                else
+                {
+                    out << "  movl " << srcOp << ", %r11d\n";
+                    out << "  movl %r11d, " << dstMem << "\n";
+                }
+            }
         }
+        };
+
+    // params: register + stack (>=7th)
+    const int pcount = (int)f.params.size();
+    const int regCount = std::min(pcount, 6);
+
+    for (int i = regCount - 1; i >= 0; --i)
+    {
+        int v = f.params[(size_t)i].id;
+        bool isPtr = (vtypeOf(f, v) == VType::PTR);
+        moveToHome(isPtr ? kArgRegs64[i] : kArgRegs32[i], v, isPtr);
     }
 
-    auto opnd = [&](int vregId) -> std::string {
-        const auto& loc = a.loc[(size_t)vregId];
-        if (loc.isReg) return std::string(r(loc.reg));
-        int off = spillOffsetBytes(loc.spillSlot, savedCount);
-        return std::to_string(off) + "(%ebp)";
-        };
+    for (int i = 6; i < pcount; ++i)
+    {
+        int v = f.params[(size_t)i].id;
+        bool isPtr = (vtypeOf(f, v) == VType::PTR);
+        int off = 16 + 8 * (i - 6);
+        moveToHome(std::to_string(off) + "(%rbp)", v, isPtr);
+    }
 
-    auto loadEAX = [&](int vregId) {
-        out << "  movl " << opnd(vregId) << ", %eax\n";
+    auto loadAcc = [&](int vregId) {
+        if (vtypeOf(f, vregId) == VType::PTR)
+            out << "  movq " << opnd64(vregId) << ", %rax\n";
+        else
+            out << "  movl " << opnd32(vregId) << ", %eax\n";
         };
-
 
     for (const auto& bb : f.blocks)
     {
@@ -144,15 +218,19 @@ void X86Emitter::emitFunction(std::ostream& out, const FunctionIR& f, const Allo
             case Instr::Kind::LoadImm:
             {
                 int d = ins.dst->id;
+                bool isPtr = (vtypeOf(f, d) == VType::PTR);
                 const auto& dl = a.loc[(size_t)d];
+
                 if (dl.isReg)
                 {
-                    out << "  movl $" << ins.imm << ", " << r(dl.reg) << "\n";
+                    out << "  " << (isPtr ? "movq $" : "movl $") << ins.imm << ", "
+                        << (isPtr ? r64(dl.reg) : r32(dl.reg)) << "\n";
                 }
                 else
                 {
-                    out << "  movl $" << ins.imm << ", %eax\n";
-                    storeRegToVReg(out, a, PhysReg::EAX, d, savedCount);
+                    out << "  " << (isPtr ? "movq $" : "movl $") << ins.imm << ", "
+                        << (isPtr ? "%rax\n" : "%eax\n");
+                    storeRegToVReg(out, f, a, PhysReg::EAX, d, savedCount);
                 }
             } break;
 
@@ -162,9 +240,9 @@ void X86Emitter::emitFunction(std::ostream& out, const FunctionIR& f, const Allo
                 int s = ins.a->id;
                 std::unordered_set<PhysReg> ex;
                 if (a.loc[(size_t)d].isReg) ex.insert(a.loc[(size_t)d].reg);
-                auto ts = loadVRegToReg(out, a, s, ex, savedCount);
-                storeRegToVReg(out, a, ts.pr, d, savedCount);
-                if (ts.saved) out << "  popl " << r(ts.pr) << "\n";
+                auto ts = loadVRegToReg(out, f, a, s, ex, savedCount);
+                storeRegToVReg(out, f, a, ts.pr, d, savedCount);
+                if (ts.saved) out << "  popq " << r64(ts.pr) << "\n";
             } break;
 
             case Instr::Kind::Un:
@@ -172,11 +250,11 @@ void X86Emitter::emitFunction(std::ostream& out, const FunctionIR& f, const Allo
                 int d = ins.dst->id;
                 int x = ins.a->id;
 
-                loadEAX(x);
+                loadAcc(x);
 
                 if (ins.unOp == UnOp::Neg)
                 {
-                    out << "  negl %eax\n";
+                    out << "  negl %eax\n"; // i32 neg
                 }
                 else
                 {
@@ -185,10 +263,8 @@ void X86Emitter::emitFunction(std::ostream& out, const FunctionIR& f, const Allo
                     out << "  movzbl %al, %eax\n";
                 }
 
-                storeRegToVReg(out, a, PhysReg::EAX, d, savedCount);
-            }
-            break;
-
+                storeRegToVReg(out, f, a, PhysReg::EAX, d, savedCount);
+            } break;
 
             case Instr::Kind::Bin:
             {
@@ -196,22 +272,37 @@ void X86Emitter::emitFunction(std::ostream& out, const FunctionIR& f, const Allo
                 int x = ins.a->id;
                 int y = ins.b->id;
 
-                loadEAX(x);
+                loadAcc(x);
 
                 switch (ins.binOp)
                 {
-                case BinOp::Add: out << "  addl " << opnd(y) << ", %eax\n"; break;
-                case BinOp::Sub: out << "  subl " << opnd(y) << ", %eax\n"; break;
-                case BinOp::Mul: out << "  imull " << opnd(y) << ", %eax\n"; break;
-                case BinOp::And: out << "  andl " << opnd(y) << ", %eax\n"; break;
-                case BinOp::Or:  out << "  orl  " << opnd(y) << ", %eax\n"; break;
-                case BinOp::Xor: out << "  xorl " << opnd(y) << ", %eax\n"; break;
+                case BinOp::Add: out << "  addl " << opnd32(y) << ", %eax\n"; break;
+                case BinOp::Sub: out << "  subl " << opnd32(y) << ", %eax\n"; break;
+                case BinOp::Mul: out << "  imull " << opnd32(y) << ", %eax\n"; break;
+                case BinOp::And: out << "  andl " << opnd32(y) << ", %eax\n"; break;
+                case BinOp::Or:  out << "  orl  " << opnd32(y) << ", %eax\n"; break;
+                case BinOp::Xor: out << "  xorl " << opnd32(y) << ", %eax\n"; break;
+                case BinOp::Div:
+                case BinOp::Mod:
+                {
+                    // eax = x
+                    // edx:eax = sign-extend
+                    // idivl y
+                    // quotient in eax, remainder in edx
+                    out << "  movl " << opnd32(x) << ", %eax\n";
+                    out << "  cdq\n"; // sign-extend eax into edx
+                    // idiv doesn't accept mem+mem; operand can be reg or mem => OK
+                    out << "  idivl " << opnd32(y) << "\n";
+                    if (ins.binOp == BinOp::Mod)
+                        out << "  movl %edx, %eax\n";
+                    storeRegToVReg(out, f, a, PhysReg::EAX, d, savedCount);
+                    break;
                 }
 
-                storeRegToVReg(out, a, PhysReg::EAX, d, savedCount);
-            }
-            break;
+                }
 
+                storeRegToVReg(out, f, a, PhysReg::EAX, d, savedCount);
+            } break;
 
             case Instr::Kind::Cmp:
             {
@@ -219,8 +310,9 @@ void X86Emitter::emitFunction(std::ostream& out, const FunctionIR& f, const Allo
                 int x = ins.a->id;
                 int y = ins.b->id;
 
-                loadEAX(x);
-                out << "  cmpl " << opnd(y) << ", %eax\n";
+                // comparisons are i32 in Latte (incl strcmp result)
+                out << "  movl " << opnd32(x) << ", %eax\n";
+                out << "  cmpl " << opnd32(y) << ", %eax\n";
 
                 switch (ins.cmpOp)
                 {
@@ -233,73 +325,123 @@ void X86Emitter::emitFunction(std::ostream& out, const FunctionIR& f, const Allo
                 }
                 out << "  movzbl %al, %eax\n";
 
-                storeRegToVReg(out, a, PhysReg::EAX, d, savedCount);
-            }
-            break;
-
+                storeRegToVReg(out, f, a, PhysReg::EAX, d, savedCount);
+            } break;
 
             case Instr::Kind::Call:
             {
                 const int n = (int)ins.args.size();
-                const int argBytes = 4 * n;
+                const int regN = std::min(n, 6);
+                const int stackN = std::max(0, n - 6);
 
-                // 16-byte alignment przed call
-                const int pad = (16 - (argBytes % 16)) % 16;
-                if (pad) out << "  subl $" << pad << ", %esp\n";
+                // Stage reg args safely // parallel-move safe
+                const int tempRaw = 8 * regN;
+                const int tempBytes = (tempRaw == 0) ? 0 : ((tempRaw + 15) / 16) * 16;
+                if (tempBytes) out << "  subq $" << tempBytes << ", %rsp\n";
 
-                // push args (cdecl): od końca
-                for (int i = n - 1; i >= 0; --i)
+                for (int i = 0; i < regN; ++i)
                 {
                     int v = ins.args[(size_t)i].id;
-                    const auto& loc = a.loc[(size_t)v];
+                    bool isPtr = (vtypeOf(f, v) == VType::PTR);
+                    std::string src = isPtr ? opnd64(v) : opnd32(v);
+                    int off = 8 * i;
+                    std::string dstMem = std::to_string(off) + "(%rsp)";
 
-                    if (loc.isReg)
+                    if (isRegOp(src))
                     {
-                        out << "  pushl " << r(loc.reg) << "\n";
+                        out << "  " << (isPtr ? "movq " : "movl ") << src << ", " << dstMem << "\n";
                     }
                     else
                     {
-                        int off = spillOffsetBytes(loc.spillSlot, savedCount);
-                        out << "  pushl " << off << "(%ebp)\n";
+                        out << "  " << (isPtr ? "movq " : "movl ") << src << ", " << (isPtr ? "%r11\n" : "%r11d\n");
+                        out << "  " << (isPtr ? "movq " : "movl ") << (isPtr ? "%r11" : "%r11d") << ", " << dstMem << "\n";
+                    }
+                }
+
+                for (int i = 0; i < regN; ++i)
+                {
+                    int v = ins.args[(size_t)i].id;
+                    bool isPtr = (vtypeOf(f, v) == VType::PTR);
+                    int off = 8 * i;
+                    out << "  " << (isPtr ? "movq " : "movl ")
+                        << off << "(%rsp), " << (isPtr ? kArgRegs64[i] : kArgRegs32[i]) << "\n";
+                }
+
+                if (tempBytes) out << "  addq $" << tempBytes << ", %rsp\n";
+
+                // Stack args right-to-left; keep 16B align at call-site
+                const int pad = (stackN % 2) ? 8 : 0;
+                if (pad) out << "  subq $" << pad << ", %rsp\n";
+
+                for (int i = n - 1; i >= 6; --i)
+                {
+                    int v = ins.args[(size_t)i].id;
+                    bool isPtr = (vtypeOf(f, v) == VType::PTR);
+
+                    if (isPtr)
+                    {
+                        out << "  pushq " << opnd64(v) << "\n";
+                    }
+                    else
+                    {
+                        // avoid pushing garbage high dword from spill // clean upper bits
+                        const auto& loc = a.loc[(size_t)v];
+                        if (loc.isReg)
+                        {
+                            out << "  pushq " << r64(loc.reg) << "\n";
+                        }
+                        else
+                        {
+                            out << "  movl " << opnd32(v) << ", %r11d\n";
+                            out << "  pushq %r11\n";
+                        }
                     }
                 }
 
                 out << "  call " << ins.callee << "\n";
 
-                // caller cleans args + pad
-                const int cleanup = argBytes + pad;
-                if (cleanup) out << "  addl $" << cleanup << ", %esp\n";
+                const int cleanup = 8 * stackN + pad;
+                if (cleanup) out << "  addq $" << cleanup << ", %rsp\n";
 
                 if (ins.dst)
-                    storeRegToVReg(out, a, PhysReg::EAX, ins.dst->id, savedCount);
-            }
-            break;
-
-
-
-
-
+                {
+                    int d = ins.dst->id;
+                    if (vtypeOf(f, d) == VType::PTR)
+                        storeRegToVReg(out, f, a, PhysReg::EAX, d, savedCount); // uses %rax via type
+                    else
+                        storeRegToVReg(out, f, a, PhysReg::EAX, d, savedCount); // uses %eax via type
+                }
+            } break;
 
             case Instr::Kind::Ret:
             {
                 if (ins.a)
                 {
                     int v = ins.a->id;
+                    bool isPtr = (vtypeOf(f, v) == VType::PTR);
                     const auto& loc = a.loc[(size_t)v];
+
                     if (loc.isReg)
                     {
-                        if (loc.reg != PhysReg::EAX) out << "  movl " << r(loc.reg) << ", %eax\n";
+                        if (isPtr)
+                        {
+                            if (loc.reg != PhysReg::EAX) out << "  movq " << r64(loc.reg) << ", %rax\n";
+                        }
+                        else
+                        {
+                            if (loc.reg != PhysReg::EAX) out << "  movl " << r32(loc.reg) << ", %eax\n";
+                        }
                     }
                     else
                     {
                         int off = spillOffsetBytes(loc.spillSlot, savedCount);
-                        out << "  movl " << off << "(%ebp), %eax\n";
+                        out << "  " << (isPtr ? "movq " : "movl ") << off << "(%rbp), " << (isPtr ? "%rax\n" : "%eax\n");
                     }
                 }
 
-                if (localsBytes > 0) out << "  addl $" << localsBytes << ", %esp\n";
-                for (int i = (int)saved.size() - 1; i >= 0; --i) out << "  popl " << r(saved[(size_t)i]) << "\n";
-                out << "  popl %ebp\n";
+                if (frameBytes > 0) out << "  addq $" << frameBytes << ", %rsp\n";
+                for (int i = (int)saved.size() - 1; i >= 0; --i) out << "  popq " << r64(saved[(size_t)i]) << "\n";
+                out << "  popq %rbp\n";
                 out << "  ret\n";
             } break;
 
@@ -311,20 +453,20 @@ void X86Emitter::emitFunction(std::ostream& out, const FunctionIR& f, const Allo
             {
                 int v = ins.a->id;
                 std::unordered_set<PhysReg> ex;
-                auto tv = loadVRegToReg(out, a, v, ex, savedCount);
-                out << "  testl " << r(tv.pr) << ", " << r(tv.pr) << "\n";
+                auto tv = loadVRegToReg(out, f, a, v, ex, savedCount);
+                out << "  testl " << r32(tv.pr) << ", " << r32(tv.pr) << "\n";
                 out << "  je .L" << ins.target.id << "\n";
-                if (tv.saved) out << "  popl " << r(tv.pr) << "\n";
+                if (tv.saved) out << "  popq " << r64(tv.pr) << "\n";
             } break;
 
             case Instr::Kind::JmpIfNonZero:
             {
                 int v = ins.a->id;
                 std::unordered_set<PhysReg> ex;
-                auto tv = loadVRegToReg(out, a, v, ex, savedCount);
-                out << "  testl " << r(tv.pr) << ", " << r(tv.pr) << "\n";
+                auto tv = loadVRegToReg(out, f, a, v, ex, savedCount);
+                out << "  testl " << r32(tv.pr) << ", " << r32(tv.pr) << "\n";
                 out << "  jne .L" << ins.target.id << "\n";
-                if (tv.saved) out << "  popl " << r(tv.pr) << "\n";
+                if (tv.saved) out << "  popq " << r64(tv.pr) << "\n";
             } break;
             }
         }
@@ -340,7 +482,5 @@ void X86Emitter::emitFunction(FILE* outF, const FunctionIR& f, const AllocResult
 
     const std::string s = oss.str();
     if (std::fwrite(s.data(), 1, s.size(), outF) != s.size())
-    {
         throw std::runtime_error("emitFunction(FILE*): fwrite failed");
-    }
 }

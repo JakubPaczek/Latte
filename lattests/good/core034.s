@@ -64,8 +64,9 @@ main:
   pushl %esi
   pushl %edi
   subl $8, %esp
+
 .L0:
-  movl $0, %ecx
+  movl $0, %eax
   movl $0, %ebx
   movl $0, %esi
   movl $0, %edi
@@ -73,38 +74,41 @@ main:
   movl %eax, -16(%ebp)
   movl $0, %eax
   movl %eax, -20(%ebp)
-  movl $10, %edx
-  movl %edx, %ecx
-  movl $20, %edx
-  movl %edx, %ebx
-  movl $30, %edx
-  movl %edx, %esi
-  movl $40, %edx
-  movl %edx, %edi
-  movl $50, %edx
-  movl %edx, -16(%ebp)
-  movl $60, %edx
-  movl %edx, -20(%ebp)
+  movl $10, %ecx
+  movl %ecx, %eax
+  movl $20, %ecx
+  movl %ecx, %ebx
+  movl $30, %ecx
+  movl %ecx, %esi
+  movl $40, %ecx
+  movl %ecx, %edi
+  movl $50, %ecx
+  movl %ecx, -16(%ebp)
+  movl $60, %ecx
+  movl %ecx, -20(%ebp)
+  pushl %eax
+  call printInt
+  addl $4, %esp
+  movl $0, %eax
+  addl %esi, %ebx
+  movl %ebx, %eax
+  addl %edi, %eax
+  movl %eax, %ecx
+  pushl %edx
+  movl -16(%ebp), %edx
+  addl %edx, %ecx
+  movl %ecx, %eax
+  popl %edx
+  pushl %edx
+  movl -20(%ebp), %edx
+  addl %edx, %eax
+  movl %eax, %ecx
+  popl %edx
   pushl %ecx
   call printInt
   addl $4, %esp
-  movl %ebx, %eax
-  addl %esi, %eax
-  movl %eax, %ecx
-  movl %ecx, %eax
-  addl %edi, %eax
-  movl %eax, %edx
-  movl %edx, %eax
-  addl -16(%ebp), %eax
-  movl %eax, %ecx
-  movl %ecx, %eax
-  addl -20(%ebp), %eax
-  movl %eax, %edx
-  pushl %edx
-  call printInt
-  addl $4, %esp
-  movl $0, %ecx
-  movl %ecx, %eax
+  movl $0, %eax
+  movl $0, %eax
   addl $8, %esp
   popl %edi
   popl %esi

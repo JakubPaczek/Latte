@@ -17,10 +17,10 @@ struct AllocResult {
     // vreg.id -> location
     std::vector<Location> loc;
 
-    // how many spill slots (each 4 bytes)
+    // how many spill slots (each 8 bytes on x86_64) // 64-bit spills
     int spillSlots = 0;
 
-    // which callee-saved regs are used (EBX/ESI/EDI)
+    // which callee-saved regs are used (SysV x86_64: only EBX among current set)
     std::unordered_set<PhysReg> usedCalleeSaved;
 };
 
@@ -65,8 +65,10 @@ private:
         const std::unordered_set<int>& spansCallRegs);
 
     static bool isCalleeSaved(PhysReg r);
-    static std::vector<PhysReg> allRegs();
-    static std::vector<PhysReg> calleeSavedRegs();
+    static bool isAllocable(PhysReg r);
+
+    static std::vector<PhysReg> allRegs();         // may include caller-saved
+    static std::vector<PhysReg> calleeSavedRegs(); // safe across call
 
     // Linear scan
     static void expireOld(std::vector<Interval*>& active, int curStart, std::array<bool, 6>& free);

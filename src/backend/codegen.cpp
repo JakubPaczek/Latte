@@ -52,7 +52,6 @@ namespace {
         return ar;
     }
 
-
     static std::string unescapeBnfcString(std::string s)
     {
         // obsłuż dwa warianty:
@@ -128,6 +127,20 @@ namespace {
         void pushScope() { scopes.emplace_back(); }
         void popScope() { scopes.pop_back(); }
 
+        VType vtypeFromTy(Ty t) const
+        {
+            switch (t)
+            {
+            case Ty::Str:  return VType::PTR;
+            case Ty::Int:  return VType::I32;
+            case Ty::Bool: return VType::I32;
+            case Ty::Void: return VType::I32; // dummy, shouldn't really be used
+            }
+            return VType::I32;
+        }
+
+        VReg newTmp(Ty t) { return f.newVReg(vtypeFromTy(t)); }
+
         void defineVar(const std::string& name, VarInfo vi)
         {
             if (scopes.empty()) pushScope();
@@ -177,7 +190,7 @@ namespace {
 
         VReg makeConst(long v)
         {
-            VReg r = f.newVReg();
+            VReg r = f.newVReg(VType::I32);
             emit(Instr::loadImm(r, v));
             return r;
         }
@@ -274,16 +287,14 @@ namespace {
                 }
                 if (dynamic_cast<Div*>(mul->mulop_))
                 {
-                    // call __divsi3(a,b)
-                    VReg dst = f.newVReg();
-                    emit(Instr::call(dst, "__divsi3", { a.v, b.v }));
+                    VReg dst = f.newVReg(VType::I32);
+                    emit(Instr::bin(dst, a.v, BinOp::Div, b.v));
                     return { dst, Ty::Int };
                 }
                 if (dynamic_cast<Mod*>(mul->mulop_))
                 {
-                    // call __modsi3(a,b)
-                    VReg dst = f.newVReg();
-                    emit(Instr::call(dst, "__modsi3", { a.v, b.v }));
+                    VReg dst = f.newVReg(VType::I32);
+                    emit(Instr::bin(dst, a.v, BinOp::Mod, b.v));
                     return { dst, Ty::Int };
                 }
                 throw std::runtime_error("Unknown MulOp in codegen");

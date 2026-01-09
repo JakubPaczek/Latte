@@ -106,7 +106,6 @@ std::unordered_set<int> RegAllocator::computeSpansCallRegs(
     const std::vector<BlockSets>&,
     const std::vector<std::unordered_set<int>>& liveOut)
 {
-
     std::unordered_set<int> spans;
 
     for (size_t bi = 0; bi < f.blocks.size(); ++bi)
@@ -145,6 +144,7 @@ std::unordered_set<int> RegAllocator::computeSpansCallRegs(
 
             if (ins.k == Instr::Kind::Call)
             {
+                // If v is live across call, it must not be in caller-saved regs. // call clobber
                 for (int v : liveBefore)
                 {
                     if (liveAfter.count(v)) spans.insert(v);
@@ -163,9 +163,8 @@ std::vector<RegAllocator::Interval> RegAllocator::buildIntervals(
     const std::vector<std::unordered_set<int>>& liveOut,
     const std::unordered_set<int>& spansCallRegs)
 {
-
     const int V = maxVRegId(f);
-    std::vector<int> start(V, 1e9);
+    std::vector<int> start(V, (int)1e9);
     std::vector<int> end(V, -1);
 
     int pos = 0;
@@ -242,18 +241,28 @@ std::vector<RegAllocator::Interval> RegAllocator::buildIntervals(
 
 bool RegAllocator::isCalleeSaved(PhysReg r)
 {
-    return r == PhysReg::EBX || r == PhysReg::ESI || r == PhysReg::EDI;
+    // SysV AMD64 callee-saved: RBX, RBP, R12-R15.
+    // With current PhysReg enum, only EBX maps to a callee-saved reg. // ABI fix
+    return r == PhysReg::EBX;
+}
+
+bool RegAllocator::isAllocable(PhysReg r)
+{
+    // EAX (RAX) is reserved as implicit scratch/return in emitter. // keep RAX free
+    return r != PhysReg::EAX && r != PhysReg::NONE;
 }
 
 std::vector<PhysReg> RegAllocator::allRegs()
 {
-    return { PhysReg::ECX, PhysReg::EDX, PhysReg::EBX, PhysReg::ESI, PhysReg::EDI };
+    // All allocable regs we currently model (caller-saved on x64): RCX, RDX, RSI, RDI.
+    // RBX is also allocable (callee-saved). // limited reg set
+    return { PhysReg::ECX, PhysReg::EDX, PhysReg::ESI, PhysReg::EDI, PhysReg::EBX };
 }
-
 
 std::vector<PhysReg> RegAllocator::calleeSavedRegs()
 {
-    return { PhysReg::EBX, PhysReg::ESI, PhysReg::EDI };
+    // Only RBX in our current enum. // spans-call safe
+    return { PhysReg::EBX };
 }
 
 int RegAllocator::regIndex(PhysReg r)
@@ -315,6 +324,8 @@ AllocResult RegAllocator::allocate(const FunctionIR& f)
 
     std::array<bool, 6> free{};
     free.fill(true);
+
+    // Reserve RAX. // implicit scratch/return
     free[(size_t)regIndex(PhysReg::EAX)] = false;
 
     std::vector<Interval*> active;
@@ -337,6 +348,7 @@ AllocResult RegAllocator::allocate(const FunctionIR& f)
         PhysReg chosen = PhysReg::NONE;
         for (auto pr : pool)
         {
+            if (!isAllocable(pr)) continue;
             int idx = regIndex(pr);
             if (idx >= 0 && free[(size_t)idx]) { chosen = pr; break; }
         }
@@ -356,12 +368,12 @@ AllocResult RegAllocator::allocate(const FunctionIR& f)
         }
 
         auto regAllowed = [&](const Interval& it, PhysReg pr) {
-            if (pr == PhysReg::EAX) return false;              // EAX niealokowalny (zgodnie z wcześniejszą poprawką)
-            if (it.spansCall) return isCalleeSaved(pr);        // przez call tylko callee-saved
+            if (!isAllocable(pr)) return false;
+            if (it.spansCall) return isCalleeSaved(pr); // must survive call
             return true;
             };
 
-        // znajdź kandydata do spill z pasującym rejestrem
+        // Find a spill candidate with a compatible reg. // prefer long-lived spill
         Interval* spill = nullptr;
         for (auto it = active.rbegin(); it != active.rend(); ++it)
         {
@@ -374,13 +386,13 @@ AllocResult RegAllocator::allocate(const FunctionIR& f)
 
         if (spill && spill->end > cur.end && spill->isReg)
         {
+            // Evict 'spill', reuse its reg. // classic linear-scan
             cur.isReg = true;
             cur.pr = spill->pr;
 
             spill->isReg = false;
             spill->spillSlot = nextSpillSlot++;
 
-            // usuń 'spill' z active
             auto posIt = std::find(active.begin(), active.end(), spill);
             if (posIt != active.end()) active.erase(posIt);
 
@@ -390,6 +402,7 @@ AllocResult RegAllocator::allocate(const FunctionIR& f)
         }
         else
         {
+            // Spill current interval. // no reg available
             cur.isReg = false;
             cur.spillSlot = nextSpillSlot++;
         }

@@ -3,6 +3,8 @@
 #include <vector>
 #include <optional>
 
+enum class VType { I32, PTR }; // I32 for int/bool, PTR for string pointers
+
 struct VReg {
     int id = -1;
     explicit VReg(int i = -1) : id(i) {}
@@ -14,22 +16,23 @@ struct Label {
     explicit Label(int i = -1) : id(i) {}
 };
 
-enum class BinOp { Add, Sub, Mul, And, Or, Xor };
+enum class BinOp { Add, Sub, Mul, Div, Mod, And, Or, Xor };
+
 enum class UnOp { Neg, Not };
 enum class CmpOp { EQ, NE, LT, LE, GT, GE };
 
 struct Instr {
     enum class Kind {
-        Mov,        // dst = src
-        LoadImm,    // dst = imm
-        Bin,        // dst = a (op) b
-        Un,         // dst = (op) a
-        Cmp,        // dst = (a cmp b) -> 0/1
-        Call,       // dst? = call name(args)
-        Ret,        // return a? (if none => void)
-        Jmp,        // jump label
-        JmpIfZero,  // if (a==0) jump label
-        JmpIfNonZero// if (a!=0) jump label
+        Mov,
+        LoadImm,
+        Bin,
+        Un,
+        Cmp,
+        Call,
+        Ret,
+        Jmp,
+        JmpIfZero,
+        JmpIfNonZero
     } k;
 
     std::optional<VReg> dst{};
@@ -48,7 +51,6 @@ struct Instr {
 
     explicit Instr(Kind kk) : k(kk), target(-1) {}
 
-    // Helpers:
     static Instr mov(VReg d, VReg src)
     {
         Instr i(Kind::Mov); i.dst = d; i.a = src; return i;
@@ -85,7 +87,7 @@ struct Instr {
 struct BasicBlock {
     Label label;
     std::vector<Instr> ins;
-    std::vector<int> succ; // indices of successor blocks
+    std::vector<int> succ;
 };
 
 struct FunctionIR {
@@ -95,11 +97,23 @@ struct FunctionIR {
     std::vector<BasicBlock> blocks;
 
     int nextVRegId = 0;
-    VReg newVReg() { return VReg(nextVRegId++); }
+
+    // vregId -> type (default I32) // typed vregs
+    std::vector<VType> vtypes;
+
+    VReg newVReg(VType t)
+    {
+        int id = nextVRegId++;
+        if ((int)vtypes.size() <= id) vtypes.resize((size_t)id + 1, VType::I32);
+        vtypes[(size_t)id] = t;
+        return VReg(id);
+    }
+
+    // backward-compatible default
+    VReg newVReg() { return newVReg(VType::I32); }
 };
 
 struct ModuleIR {
     std::vector<FunctionIR> funs;
-
     std::vector<std::string> stringLits;
 };

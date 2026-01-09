@@ -29,8 +29,7 @@ int readInt(void) {
     return x;
 }
 
-// Czyta do '\n' lub EOF, zwraca malloc-owany string bez trailing '\n'.
-// Działa cross-platform i nie potrzebuje getline/ssize_t.
+// Reads up to '\n' or EOF, returns malloc'ed string without trailing '\n'.
 char* readString(void) {
     size_t cap = 64;
     size_t len = 0;
@@ -48,24 +47,25 @@ char* readString(void) {
         buf[len++] = (char)c;
     }
 
-    // usuń ewentualny '\r' (CRLF)
+    // Handle CRLF
     if (len > 0 && buf[len - 1] == '\r') len--;
 
     buf[len] = '\0';
     return buf;
 }
 
-int __divsi3(int a, int b) {
-    if (b == 0) {
-        error();
-    }
-    return a / b;
-}
+// Latte string concatenation helper: returns malloc'ed result.
+char* __latte_concat(const char* a, const char* b) {
+    if (!a) a = "";
+    if (!b) b = "";
 
-int __modsi3(int a, int b) {
-    if (b == 0) {
-        error();
-    }
-    return a % b;
-}
+    size_t la = strlen(a);
+    size_t lb = strlen(b);
 
+    char* r = (char*)malloc(la + lb + 1);
+    if (!r) runtime_error();
+
+    memcpy(r, a, la);
+    memcpy(r + la, b, lb + 1); // copy '\0' too
+    return r;
+}
