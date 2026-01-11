@@ -1,4 +1,4 @@
-// lib/runtime.c
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,36 +8,47 @@ static void runtime_error(void) {
     exit(1);
 }
 
-void printInt(int x) {
-    printf("%d\n", x);
-}
+void printInt(int x) { printf("%d\n", x); }
 
 void printString(char* s) {
     if (!s) s = "";
     printf("%s\n", s);
 }
 
-void error(void) {
-    runtime_error();
-}
+void error(void) { runtime_error(); }
 
 int readInt(void) {
     int x = 0;
-    if (scanf("%d", &x) != 1) {
-        runtime_error();
-    }
+    if (scanf("%d", &x) != 1) runtime_error();
     return x;
 }
 
 // Reads up to '\n' or EOF, returns malloc'ed string without trailing '\n'.
+// IMPORTANT: skip leading '\n' / '\r' left by scanf.
 char* readString(void) {
+    int c;
+
+    // skip leading newlines (common after readInt)
+    do {
+        c = fgetc(stdin);
+        if (c == EOF) {
+            char* empty = (char*)malloc(1);
+            if (!empty) runtime_error();
+            empty[0] = '\0';
+            return empty;
+        }
+    } while (c == '\n' || c == '\r');
+
+    // put back first non-newline char
+    ungetc(c, stdin);
+
     size_t cap = 64;
     size_t len = 0;
     char* buf = (char*)malloc(cap);
     if (!buf) runtime_error();
 
-    int c;
     while ((c = fgetc(stdin)) != EOF && c != '\n') {
+        if (c == '\r') break; // handle CRLF
         if (len + 1 >= cap) {
             cap *= 2;
             char* nb = (char*)realloc(buf, cap);
@@ -47,14 +58,10 @@ char* readString(void) {
         buf[len++] = (char)c;
     }
 
-    // Handle CRLF
-    if (len > 0 && buf[len - 1] == '\r') len--;
-
     buf[len] = '\0';
     return buf;
 }
 
-// Latte string concatenation helper: returns malloc'ed result.
 char* __latte_concat(const char* a, const char* b) {
     if (!a) a = "";
     if (!b) b = "";
@@ -66,6 +73,6 @@ char* __latte_concat(const char* a, const char* b) {
     if (!r) runtime_error();
 
     memcpy(r, a, la);
-    memcpy(r + la, b, lb + 1); // copy '\0' too
+    memcpy(r + la, b, lb + 1);
     return r;
 }
