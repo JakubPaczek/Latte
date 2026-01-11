@@ -124,7 +124,7 @@ endif
 # ------------------------------------------------------------
 # Cleanup
 # ------------------------------------------------------------
-clean:
+
 clean:
 ifeq ($(OS),Windows_NT)
 	-$(RM) "$(TARGET_WIN)" "$(TARGET_X86_64_WIN)" 2>$(NULLDEV) || exit 0
@@ -139,9 +139,23 @@ ifeq ($(OS),Windows_NT)
 	-$(RM) "$(FRONTEND_DIR)\TestLatteCPP.exe" "$(FRONTEND_DIR)\TestLatteCPP" 2>$(NULLDEV) || exit 0
 	-$(RM) "$(FRONTEND_DIR)\LatteCPP.exe" "$(FRONTEND_DIR)\LatteCPP" 2>$(NULLDEV) || exit 0
 	-$(RM) "$(FRONTEND_DIR)\LatteCPP.aux" "$(FRONTEND_DIR)\LatteCPP.log" "$(FRONTEND_DIR)\LatteCPP.pdf" "$(FRONTEND_DIR)\LatteCPP.dvi" "$(FRONTEND_DIR)\LatteCPP.ps" 2>$(NULLDEV) || exit 0
+
+	# ---- tests artifacts (Windows) ----
+	-$(RM) "lattests\good\*.s" "lattests\good\*.o" "lattests\good\*.exe" 2>$(NULLDEV) || exit 0
+	-$(RM) "lattests\good\*.got" "lattests\good\*.diff" 2>$(NULLDEV) || exit 0
+	-$(RM) "lattests\good\*.log" "lattests\good\*.err" 2>$(NULLDEV) || exit 0
+
 else
 	$(RM) "$(TARGET_WIN)" "$(TARGET_X86_64_WIN)" "$(SRC_DIR)"/*.o "$(BACKEND_DIR)"/*.o "$(RUNTIME_OBJ)"
 	$(MAKE_RECURSIVE) -C "$(FRONTEND_DIR)" clean || true
+
+	# ---- tests artifacts (Unix/WSL/Linux) ----
+	$(RM) lattests/good/*.s lattests/good/*.o
+	$(RM) lattests/good/*.got lattests/good/*.diff lattests/good/*.log lattests/good/*.err
+
+	# remove only built test executables (no extension), keep .lat/.input/.output
+	# matches executable regular files named core* directly under lattests/good
+	-find lattests/good -maxdepth 1 -type f -name 'core*' -executable -delete 2>/dev/null || true
 endif
 
 distclean: clean
