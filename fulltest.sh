@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-trap 'echo "ERROR at line $LINENO"; exit 2' ERR
+trap 'rc=$?; echo "ERROR at line $LINENO: $BASH_COMMAND (exit $rc)" >&2; exit $rc' ERR
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GOOD_DIR="${ROOT_DIR}/lattests/good"
@@ -46,7 +46,7 @@ fail=0
 noout=0
 
 for lat in "${tests[@]}"; do
-  ((total++))
+  ((total+=1))
 
   base="${lat%.lat}"
   name="$(basename "${base}")"
@@ -68,7 +68,7 @@ for lat in "${tests[@]}"; do
   if ! "${COMPILER}" "${lat}" > /dev/null 2> "${compile_log}"; then
     red "COMPILE_FAIL ${name}"
     echo "  log: ${compile_log}"
-    ((fail++))
+    ((fail+=1))
     echo
     continue
   fi
@@ -77,7 +77,7 @@ for lat in "${tests[@]}"; do
   if ! gcc -no-pie "${sfile}" "${RUNTIME_O}" -o "${exe}" > "${link_log}" 2>&1; then
     red "LINK_FAIL ${name}"
     echo "  log: ${link_log}"
-    ((fail++))
+    ((fail+=1))
     echo
     continue
   fi
@@ -86,7 +86,7 @@ for lat in "${tests[@]}"; do
   if ! "${exe}" > "${got}" 2> "${run_err}"; then
     red "RUN_FAIL ${name}"
     echo "  stderr: ${run_err}"
-    ((fail++))
+    ((fail+=1))
     echo
     continue
   fi
@@ -97,7 +97,7 @@ for lat in "${tests[@]}"; do
 
     if diff -u "${expected}" "${got}" > "${diff_file}"; then
       green "OK ${name}"
-      ((ok++))
+      ((ok+=1))
       rm -f "${compile_log}" "${link_log}" "${run_err}" "${diff_file}"
     else
       red "FAIL ${name}"
@@ -107,11 +107,11 @@ for lat in "${tests[@]}"; do
       cat "${got}"
       echo "----- diff -----"
       cat "${diff_file}"
-      ((fail++))
+      ((fail+=1))
     fi
   else
     yellow "NOOUTPUT ${name} (saved: ${name}.got)"
-    ((noout++))
+    ((noout+=1))
     rm -f "${compile_log}" "${link_log}" "${run_err}"
   fi
 
