@@ -24,7 +24,7 @@ if [[ ! -d "${GOOD_DIR}" ]]; then
   exit 2
 fi
 
-# build runtime
+# build runtime once
 gcc -c "${RUNTIME_C}" -o "${RUNTIME_O}"
 
 shopt -s nullglob
@@ -73,7 +73,7 @@ for lat in "${tests[@]}"; do
     continue
   fi
 
-  # 2) link
+  # 2) link s + runtime
   if ! gcc -no-pie "${sfile}" "${RUNTIME_O}" -o "${exe}" > "${link_log}" 2>&1; then
     red "LINK_FAIL ${name}"
     echo "  log: ${link_log}"
@@ -91,9 +91,8 @@ for lat in "${tests[@]}"; do
     continue
   fi
 
-  # 4) compare (only if expected exists)
+  # 4) compare if expected exists
   if [[ -f "${expected}" ]]; then
-    # normalize CRLF just in case
     tr -d '\r' < "${got}" > "${got}.tmp" && mv "${got}.tmp" "${got}"
 
     if diff -u "${expected}" "${got}" > "${diff_file}"; then
@@ -126,7 +125,3 @@ echo "  fail:      ${fail}"
 echo "  no output: ${noout}"
 
 exit $(( fail > 0 ))
-EOF
-
-chmod +x fulltest.sh
-./fulltest.sh
