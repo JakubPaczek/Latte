@@ -249,9 +249,8 @@ std::vector<RegAllocator::Interval> RegAllocator::buildIntervals(
 
 bool RegAllocator::isCalleeSaved(PhysReg r)
 {
-    // SysV AMD64 callee-saved: RBX, RBP, R12-R15.
-    // With current PhysReg enum, only EBX maps to a callee-saved reg. // ABI fix
-    return r == PhysReg::EBX;
+    return r == PhysReg::EBX ||
+        r == PhysReg::R12 || r == PhysReg::R13 || r == PhysReg::R14 || r == PhysReg::R15;
 }
 
 bool RegAllocator::isAllocable(PhysReg r)
@@ -262,14 +261,18 @@ bool RegAllocator::isAllocable(PhysReg r)
 
 std::vector<PhysReg> RegAllocator::allRegs()
 {
+    // EAX reserved by emitter
     // avoid EDX: clobbered by cdq/idiv
-    return { PhysReg::ECX, PhysReg::ESI, PhysReg::EDI, PhysReg::EBX };
+    return {
+        PhysReg::ECX, PhysReg::ESI, PhysReg::EDI,
+        PhysReg::R8, PhysReg::R9, PhysReg::R10,
+        PhysReg::EBX, PhysReg::R12, PhysReg::R13, PhysReg::R14, PhysReg::R15
+    };
 }
 
 std::vector<PhysReg> RegAllocator::calleeSavedRegs()
 {
-    // Only RBX in our current enum. // spans-call safe
-    return { PhysReg::EBX };
+    return { PhysReg::EBX, PhysReg::R12, PhysReg::R13, PhysReg::R14, PhysReg::R15 };
 }
 
 int RegAllocator::regIndex(PhysReg r)
@@ -282,6 +285,13 @@ int RegAllocator::regIndex(PhysReg r)
     case PhysReg::EBX: return 3;
     case PhysReg::ESI: return 4;
     case PhysReg::EDI: return 5;
+    case PhysReg::R8:  return 6;
+    case PhysReg::R9:  return 7;
+    case PhysReg::R10: return 8;
+    case PhysReg::R12: return 9;
+    case PhysReg::R13: return 10;
+    case PhysReg::R14: return 11;
+    case PhysReg::R15: return 12;
     default: return -1;
     }
 }
@@ -290,17 +300,25 @@ PhysReg RegAllocator::idxReg(int i)
 {
     switch (i)
     {
-    case 0: return PhysReg::EAX;
-    case 1: return PhysReg::ECX;
-    case 2: return PhysReg::EDX;
-    case 3: return PhysReg::EBX;
-    case 4: return PhysReg::ESI;
-    case 5: return PhysReg::EDI;
+    case 0:  return PhysReg::EAX;
+    case 1:  return PhysReg::ECX;
+    case 2:  return PhysReg::EDX;
+    case 3:  return PhysReg::EBX;
+    case 4:  return PhysReg::ESI;
+    case 5:  return PhysReg::EDI;
+    case 6:  return PhysReg::R8;
+    case 7:  return PhysReg::R9;
+    case 8:  return PhysReg::R10;
+    case 9:  return PhysReg::R12;
+    case 10: return PhysReg::R13;
+    case 11: return PhysReg::R14;
+    case 12: return PhysReg::R15;
     default: return PhysReg::NONE;
     }
 }
 
-void RegAllocator::expireOld(std::vector<Interval*>& active, int curStart, std::array<bool, 6>& free)
+
+void RegAllocator::expireOld(std::vector<Interval*>& active, int curStart, std::array<bool, kPhysRegCount>& free)
 {
     while (!active.empty())
     {
@@ -329,7 +347,7 @@ AllocResult RegAllocator::allocate(const FunctionIR& f)
     AllocResult res;
     res.loc.assign((size_t)maxVRegId(f), Location{ true, PhysReg::NONE, -1 });
 
-    std::array<bool, 6> free{};
+    std::array<bool, kPhysRegCount> free{};
     free.fill(true);
 
     // Reserve RAX. // implicit scratch/return

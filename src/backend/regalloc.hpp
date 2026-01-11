@@ -5,7 +5,13 @@
 #include <unordered_set>
 #include <vector>
 
-enum class PhysReg { EAX, ECX, EDX, EBX, ESI, EDI, NONE };
+enum class PhysReg {
+    EAX, ECX, EDX, EBX, ESI, EDI,
+    R8, R9, R10, R12, R13, R14, R15,
+    NONE
+};
+
+static constexpr int kPhysRegCount = 13; // bez NONE
 
 struct Location {
     bool isReg = true;
@@ -71,7 +77,7 @@ private:
     static std::vector<PhysReg> calleeSavedRegs(); // safe across call
 
     // Linear scan
-    static void expireOld(std::vector<Interval*>& active, int curStart, std::array<bool, 6>& free);
+    static void expireOld(std::vector<Interval*>& active, int curStart, std::array<bool, kPhysRegCount>& free);
     static int  regIndex(PhysReg r);
     static PhysReg idxReg(int i);
 };

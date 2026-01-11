@@ -25,6 +25,13 @@ const char* X86Emitter::r64(PhysReg pr)
     case PhysReg::EBX: return "%rbx";
     case PhysReg::ESI: return "%rsi";
     case PhysReg::EDI: return "%rdi";
+    case PhysReg::R8:  return "%r8";
+    case PhysReg::R9:  return "%r9";
+    case PhysReg::R10: return "%r10";
+    case PhysReg::R12: return "%r12";
+    case PhysReg::R13: return "%r13";
+    case PhysReg::R14: return "%r14";
+    case PhysReg::R15: return "%r15";
     default: return "<?>"; // unknown reg
     }
 }
@@ -39,14 +46,21 @@ const char* X86Emitter::r32(PhysReg pr)
     case PhysReg::EBX: return "%ebx";
     case PhysReg::ESI: return "%esi";
     case PhysReg::EDI: return "%edi";
+    case PhysReg::R8:  return "%r8d";
+    case PhysReg::R9:  return "%r9d";
+    case PhysReg::R10: return "%r10d";
+    case PhysReg::R12: return "%r12d";
+    case PhysReg::R13: return "%r13d";
+    case PhysReg::R14: return "%r14d";
+    case PhysReg::R15: return "%r15d";
     default: return "<?>"; // unknown reg
     }
 }
 
 bool X86Emitter::isCalleeSaved(PhysReg pr)
 {
-    // SysV AMD64 callee-saved: RBX, RBP, R12-R15.
-    return pr == PhysReg::EBX;
+    return pr == PhysReg::EBX ||
+        pr == PhysReg::R12 || pr == PhysReg::R13 || pr == PhysReg::R14 || pr == PhysReg::R15;
 }
 
 int X86Emitter::spillOffsetBytes(int spillSlot, int savedCount)
@@ -57,7 +71,7 @@ int X86Emitter::spillOffsetBytes(int spillSlot, int savedCount)
 
 PhysReg X86Emitter::pickScratch(const std::unordered_set<PhysReg>& exclude)
 {
-    const PhysReg order[] = { PhysReg::EDX, PhysReg::ECX, PhysReg::EAX, PhysReg::ESI, PhysReg::EDI, PhysReg::EBX };
+    const PhysReg order[] = { PhysReg::R10, PhysReg::R9, PhysReg::R8, PhysReg::EDX, PhysReg::ECX, PhysReg::ESI, PhysReg::EDI };
     for (auto pr : order) if (!exclude.count(pr)) return pr;
     throw std::runtime_error("no scratch register available");
 }
@@ -113,7 +127,7 @@ void X86Emitter::storeRegToVReg(std::ostream& out,
 void X86Emitter::emitFunction(std::ostream& out, const FunctionIR& f, const AllocResult& a)
 {
     std::vector<PhysReg> saved;
-    for (PhysReg pr : { PhysReg::EBX })
+    for (PhysReg pr : { PhysReg::EBX, PhysReg::R12, PhysReg::R13, PhysReg::R14, PhysReg::R15 })
         if (a.usedCalleeSaved.count(pr) && isCalleeSaved(pr)) saved.push_back(pr);
 
     const int savedCount = (int)saved.size();
