@@ -453,10 +453,10 @@ namespace {
                     }
                     else if (auto* ini = dynamic_cast<Init*>(it))
                     {
-                        VReg v = f.newVReg(vtypeFromTy(t));
-                        defineVar(ini->ident_, { v, t });
-                        Val rhs = genExpr(ini->expr_);
-                        emit(Instr::mov(v, rhs.v));
+                        Val rhs = genExpr(ini->expr_);                 // 1) policz RHS w starym scope
+                        VReg v = f.newVReg(vtypeFromTy(t));            // 2) utwórz vreg
+                        defineVar(ini->ident_, { v, t });              // 3) dopiero teraz wprowadź nową zmienną
+                        emit(Instr::mov(v, rhs.v));                    // 4) przypisz wynik
                     }
                     else
                     {
