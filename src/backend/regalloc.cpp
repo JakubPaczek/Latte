@@ -256,8 +256,8 @@ bool RegAllocator::isCalleeSaved(PhysReg r)
 
 bool RegAllocator::isAllocable(PhysReg r)
 {
-    // EAX (RAX) is reserved as implicit scratch/return in emitter. // keep RAX free
-    return r != PhysReg::EAX && r != PhysReg::NONE;
+    // reserve EAX for return/scratch and EDX because idiv/cltd clobbers it
+    return r != PhysReg::EAX && r != PhysReg::EDX && r != PhysReg::NONE;
 }
 
 std::vector<PhysReg> RegAllocator::allRegs()
@@ -265,7 +265,6 @@ std::vector<PhysReg> RegAllocator::allRegs()
     // avoid EDX: clobbered by cdq/idiv
     return { PhysReg::ECX, PhysReg::ESI, PhysReg::EDI, PhysReg::EBX };
 }
-
 
 std::vector<PhysReg> RegAllocator::calleeSavedRegs()
 {

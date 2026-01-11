@@ -53,6 +53,7 @@ for lat in "${tests[@]}"; do
   sfile="${base}.s"
   exe="${base}"
   expected="${base}.output"
+  input="${base}.input"
   got="${base}.got"
   diff_file="${base}.diff"
 
@@ -82,17 +83,28 @@ for lat in "${tests[@]}"; do
     continue
   fi
 
-  # 3) run
-  if ! "${exe}" > "${got}" 2> "${run_err}"; then
-    red "RUN_FAIL ${name}"
-    echo "  stderr: ${run_err}"
-    ((fail+=1))
-    echo
-    continue
+  # 3) run (feed stdin from .input if present)
+  if [[ -f "${input}" ]]; then
+    if ! "${exe}" < "${input}" > "${got}" 2> "${run_err}"; then
+      red "RUN_FAIL ${name}"
+      echo "  stderr: ${run_err}"
+      ((fail+=1))
+      echo
+      continue
+    fi
+  else
+    if ! "${exe}" > "${got}" 2> "${run_err}"; then
+      red "RUN_FAIL ${name}"
+      echo "  stderr: ${run_err}"
+      ((fail+=1))
+      echo
+      continue
+    fi
   fi
 
   # 4) compare if expected exists
   if [[ -f "${expected}" ]]; then
+    # normalize CRLF just in case
     tr -d '\r' < "${got}" > "${got}.tmp" && mv "${got}.tmp" "${got}"
 
     if diff -u "${expected}" "${got}" > "${diff_file}"; then
