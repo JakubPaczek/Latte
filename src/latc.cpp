@@ -40,7 +40,7 @@ int main(int argc, char* argv[])
 
     try
     {
-        // FRONTEND ONLY: parse already done, now typecheck
+        // frontend
         TypeChecker checker;
         checker.checkProgram(program);
 
