@@ -6,6 +6,7 @@ CFLAGS   := -Wall -Wextra -O2 -g
 SRC_DIR      := src
 FRONTEND_DIR := $(SRC_DIR)/frontend
 BACKEND_DIR  := $(SRC_DIR)/backend
+SEM_DIR 	 := $(SRC_DIR)/semantic
 LIB_DIR      := lib
 
 TARGET        := latc
@@ -26,9 +27,9 @@ FRONTEND_MAIN_OBJ := $(SRC_DIR)/main_frontend.o
 FULL_MAIN_OBJ     := $(SRC_DIR)/latte_main.o   # <-- your existing full compiler main
 
 CORE_COMMON_OBJS := \
-  $(SRC_DIR)/typecheck.o     \
-  $(SRC_DIR)/env.o           \
-  $(SRC_DIR)/latte_error.o
+  $(SEM_DIR)/typecheck.o \
+  $(SEM_DIR)/env.o \
+  $(SEM_DIR)/latte_error.o
 
 BACKEND_OBJS := \
   $(BACKEND_DIR)/codegen.o   \
@@ -93,15 +94,15 @@ $(SRC_DIR)/latte_main.o: $(SRC_DIR)/latte_main.cpp \
   $(SRC_DIR)/typecheck.hpp $(SRC_DIR)/latte_error.hpp
 	$(CXX) $(CXXFLAGS) -I"$(FRONTEND_DIR)" -I"$(SRC_DIR)" -c $< -o $@
 
-$(SRC_DIR)/typecheck.o: $(SRC_DIR)/typecheck.cpp \
-  $(SRC_DIR)/typecheck.hpp $(SRC_DIR)/env.hpp $(SRC_DIR)/latte_error.hpp
-	$(CXX) $(CXXFLAGS) -I"$(FRONTEND_DIR)" -I"$(SRC_DIR)" -c $< -o $@
+$(SEM_DIR)/typecheck.o: $(SEM_DIR)/typecheck.cpp \
+  $(SEM_DIR)/typecheck.hpp $(SEM_DIR)/env.hpp $(SEM_DIR)/latte_error.hpp
+	$(CXX) $(CXXFLAGS) -I"$(FRONTEND_DIR)" -I"$(SRC_DIR)" -I"$(SEM_DIR)" -c $< -o $@
 
-$(SRC_DIR)/env.o: $(SRC_DIR)/env.cpp $(SRC_DIR)/env.hpp
-	$(CXX) $(CXXFLAGS) -I"$(SRC_DIR)" -c $< -o $@
+$(SEM_DIR)/env.o: $(SEM_DIR)/env.cpp $(SEM_DIR)/env.hpp
+	$(CXX) $(CXXFLAGS) -I"$(SEM_DIR)" -c $< -o $@
 
-$(SRC_DIR)/latte_error.o: $(SRC_DIR)/latte_error.cpp $(SRC_DIR)/latte_error.hpp
-	$(CXX) $(CXXFLAGS) -I"$(SRC_DIR)" -c $< -o $@
+$(SEM_DIR)/latte_error.o: $(SEM_DIR)/latte_error.cpp $(SEM_DIR)/latte_error.hpp
+	$(CXX) $(CXXFLAGS) -I"$(SEM_DIR)" -c $< -o $@
 
 $(BACKEND_DIR)/codegen.o: $(BACKEND_DIR)/codegen.cpp $(BACKEND_DIR)/codegen.hpp \
   $(FRONTEND_DIR)/Absyn.H $(BACKEND_DIR)/ir.hpp
@@ -136,26 +137,34 @@ $(TARGET_X86_64_WIN): frontend $(FULL_MAIN_OBJ) $(CORE_COMMON_OBJS) $(BACKEND_OB
 clean:
 ifeq ($(OS),Windows_NT)
 	-$(RM) "$(TARGET_WIN)" "$(TARGET_X86_64_WIN)" 2>$(NULLDEV) || exit 0
+
+	# object files (your code)
 	-$(RM) "$(SRC_DIR)\*.o" 2>$(NULLDEV) || exit 0
 	-$(RM) "$(BACKEND_DIR)\*.o" 2>$(NULLDEV) || exit 0
+	-$(RM) "$(SEM_DIR)\*.o" 2>$(NULLDEV) || exit 0
 
+	# runtime
 	-$(RM) "$(RUNTIME_OBJ)" 2>$(NULLDEV) || exit 0
 	-$(RM) "$(LIB_DIR)\*.o" 2>$(NULLDEV) || exit 0
 	-$(RM) "$(LIB_DIR)/*.o" 2>$(NULLDEV) || exit 0
 
-	-$(RM) "$(FRONTEND_DIR)\*.o" 2>$(NULLDEV) || exit 0
-	-$(RM) "$(FRONTEND_DIR)\TestLatteCPP.exe" "$(FRONTEND_DIR)\TestLatteCPP" 2>$(NULLDEV) || exit 0
-	-$(RM) "$(FRONTEND_DIR)\LatteCPP.exe" "$(FRONTEND_DIR)\LatteCPP" 2>$(NULLDEV) || exit 0
-	-$(RM) "$(FRONTEND_DIR)\LatteCPP.aux" "$(FRONTEND_DIR)\LatteCPP.log" "$(FRONTEND_DIR)\LatteCPP.pdf" "$(FRONTEND_DIR)\LatteCPP.dvi" "$(FRONTEND_DIR)\LatteCPP.ps" 2>$(NULLDEV) || exit 0
+	# BNFC frontend artifacts (either do it manually OR call sub-make; better: call sub-make)
+	$(MAKE_RECURSIVE) -C "$(FRONTEND_DIR)" clean || exit 0
 
+	# tests artifacts (Windows)
 	-$(RM) "lattests\good\*.s" "lattests\good\*.o" "lattests\good\*.exe" 2>$(NULLDEV) || exit 0
 	-$(RM) "lattests\good\*.got" "lattests\good\*.diff" 2>$(NULLDEV) || exit 0
 	-$(RM) "lattests\good\*.log" "lattests\good\*.err" 2>$(NULLDEV) || exit 0
 
 else
-	$(RM) "$(TARGET_WIN)" "$(TARGET_X86_64_WIN)" "$(SRC_DIR)"/*.o "$(BACKEND_DIR)"/*.o "$(RUNTIME_OBJ)"
+	# binaries + object files
+	$(RM) "$(TARGET_WIN)" "$(TARGET_X86_64_WIN)" \
+	  "$(SRC_DIR)"/*.o "$(BACKEND_DIR)"/*.o "$(SEM_DIR)"/*.o "$(RUNTIME_OBJ)"
+
+	# BNFC frontend artifacts
 	$(MAKE_RECURSIVE) -C "$(FRONTEND_DIR)" clean || true
 
+	# tests artifacts (Unix/WSL/Linux)
 	$(RM) lattests/good/*.s lattests/good/*.o
 	$(RM) lattests/good/*.got lattests/good/*.diff lattests/good/*.log lattests/good/*.err
 	-find lattests/good -maxdepth 1 -type f -name 'core*' -executable -delete 2>/dev/null || true
