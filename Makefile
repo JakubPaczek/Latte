@@ -21,8 +21,11 @@ FRONTEND_OBJS := \
   $(FRONTEND_DIR)/Printer.o \
   $(FRONTEND_DIR)/Lexer.o
 
-CORE_OBJS := \
-  $(SRC_DIR)/latte_main.o    \
+# Two separate mains:
+FRONTEND_MAIN_OBJ := $(SRC_DIR)/main_frontend.o
+FULL_MAIN_OBJ     := $(SRC_DIR)/latte_main.o   # <-- your existing full compiler main
+
+CORE_COMMON_OBJS := \
   $(SRC_DIR)/typecheck.o     \
   $(SRC_DIR)/env.o           \
   $(SRC_DIR)/latte_error.o
@@ -45,8 +48,6 @@ ifeq ($(OS),Windows_NT)
   TARGET_WIN        := $(TARGET)$(EXEEXT)
   TARGET_X86_64_WIN := $(TARGET_X86_64)$(EXEEXT)
 
-  # Critical: $(MAKE) can be "C:/Program Files (x86)/.../make.exe"
-  # cmd.exe splits on spaces unless quoted.
   MAKE_RECURSIVE := "$(MAKE)"
 else
   RM        := rm -f
@@ -81,6 +82,13 @@ $(RUNTIME_OBJ): $(RUNTIME_SRC)
 # ------------------------------------------------------------
 # C++ compilation
 # ------------------------------------------------------------
+
+# NEW: frontend-only main
+$(SRC_DIR)/main_frontend.o: $(SRC_DIR)/main_frontend.cpp \
+  $(SRC_DIR)/typecheck.hpp $(SRC_DIR)/latte_error.hpp
+	$(CXX) $(CXXFLAGS) -I"$(FRONTEND_DIR)" -I"$(SRC_DIR)" -c $< -o $@
+
+# Existing full compiler main (unchanged file name)
 $(SRC_DIR)/latte_main.o: $(SRC_DIR)/latte_main.cpp \
   $(SRC_DIR)/typecheck.hpp $(SRC_DIR)/latte_error.hpp
 	$(CXX) $(CXXFLAGS) -I"$(FRONTEND_DIR)" -I"$(SRC_DIR)" -c $< -o $@
@@ -110,16 +118,16 @@ $(BACKEND_DIR)/x86_emit.o: $(BACKEND_DIR)/x86_emit.cpp $(BACKEND_DIR)/x86_emit.h
 # ------------------------------------------------------------
 # Link compiler (host)
 # ------------------------------------------------------------
-$(TARGET_WIN): $(CORE_OBJS) $(BACKEND_OBJS) $(FRONTEND_OBJS)
-	$(CXX) $(CXXFLAGS) -I"$(FRONTEND_DIR)" -I"$(SRC_DIR)" -o $@ \
-	  $(CORE_OBJS) $(BACKEND_OBJS) $(FRONTEND_OBJS)
 
-$(TARGET_X86_64_WIN): $(TARGET_WIN)
-ifeq ($(OS),Windows_NT)
-	$(COPY) "$(TARGET_WIN)" "$(TARGET_X86_64_WIN)" >$(NULLDEV)
-else
-	$(COPY) "$(TARGET_WIN)" "$(TARGET_X86_64_WIN)"
-endif
+# latc = FRONTEND ONLY
+$(TARGET_WIN): frontend $(FRONTEND_MAIN_OBJ) $(CORE_COMMON_OBJS) $(FRONTEND_OBJS)
+	$(CXX) $(CXXFLAGS) -I"$(FRONTEND_DIR)" -I"$(SRC_DIR)" -o $@ \
+	  $(FRONTEND_MAIN_OBJ) $(CORE_COMMON_OBJS) $(FRONTEND_OBJS)
+
+# latc_x86_64 = FULL COMPILER (frontend + backend)
+$(TARGET_X86_64_WIN): frontend $(FULL_MAIN_OBJ) $(CORE_COMMON_OBJS) $(BACKEND_OBJS) $(FRONTEND_OBJS) $(RUNTIME_OBJ)
+	$(CXX) $(CXXFLAGS) -I"$(FRONTEND_DIR)" -I"$(SRC_DIR)" -o $@ \
+	  $(FULL_MAIN_OBJ) $(CORE_COMMON_OBJS) $(BACKEND_OBJS) $(FRONTEND_OBJS)
 
 # ------------------------------------------------------------
 # Cleanup
@@ -140,7 +148,6 @@ ifeq ($(OS),Windows_NT)
 	-$(RM) "$(FRONTEND_DIR)\LatteCPP.exe" "$(FRONTEND_DIR)\LatteCPP" 2>$(NULLDEV) || exit 0
 	-$(RM) "$(FRONTEND_DIR)\LatteCPP.aux" "$(FRONTEND_DIR)\LatteCPP.log" "$(FRONTEND_DIR)\LatteCPP.pdf" "$(FRONTEND_DIR)\LatteCPP.dvi" "$(FRONTEND_DIR)\LatteCPP.ps" 2>$(NULLDEV) || exit 0
 
-	# ---- tests artifacts (Windows) ----
 	-$(RM) "lattests\good\*.s" "lattests\good\*.o" "lattests\good\*.exe" 2>$(NULLDEV) || exit 0
 	-$(RM) "lattests\good\*.got" "lattests\good\*.diff" 2>$(NULLDEV) || exit 0
 	-$(RM) "lattests\good\*.log" "lattests\good\*.err" 2>$(NULLDEV) || exit 0
@@ -149,12 +156,8 @@ else
 	$(RM) "$(TARGET_WIN)" "$(TARGET_X86_64_WIN)" "$(SRC_DIR)"/*.o "$(BACKEND_DIR)"/*.o "$(RUNTIME_OBJ)"
 	$(MAKE_RECURSIVE) -C "$(FRONTEND_DIR)" clean || true
 
-	# ---- tests artifacts (Unix/WSL/Linux) ----
 	$(RM) lattests/good/*.s lattests/good/*.o
 	$(RM) lattests/good/*.got lattests/good/*.diff lattests/good/*.log lattests/good/*.err
-
-	# remove only built test executables (no extension), keep .lat/.input/.output
-	# matches executable regular files named core* directly under lattests/good
 	-find lattests/good -maxdepth 1 -type f -name 'core*' -executable -delete 2>/dev/null || true
 endif
 
