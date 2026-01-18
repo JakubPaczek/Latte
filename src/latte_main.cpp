@@ -7,8 +7,8 @@
 #include "frontend/Parser.H"
 #include "frontend/Absyn.H"
 
-#include "typecheck.hpp"
-#include "latte_error.hpp"
+#include "semantic/typecheck.hpp"
+#include "semantic/latte_error.hpp"
 
 #include "backend/ir.hpp"
 #include "backend/regalloc.hpp"
