@@ -136,6 +136,7 @@ public:
 
     std::optional<FieldInfo> lookupField(const std::string& className, const std::string& fieldName) const;
     std::optional<MethodInfo> lookupMethod(const std::string& className, const std::string& methodName) const;
+    ClassInfo& getCLassRef(const std::string& name);
 
 private:
     std::unordered_map<std::string, FunInfo> globalFunctions_;

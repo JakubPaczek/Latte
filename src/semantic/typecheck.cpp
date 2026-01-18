@@ -1,7 +1,10 @@
-#include "typecheck.h"
+#include "typecheck.hpp"
 
-// BNFC AST
-#include "frontend/Absyn.H"
+#include <vector>
+#include <string>
+#include <cstddef>
+
+// ---------------- ctor / entry ----------------
 
 TypeChecker::TypeChecker()
 {
@@ -10,43 +13,37 @@ TypeChecker::TypeChecker()
 
 void TypeChecker::checkProgram(Program* program)
 {
-    if (!program)
-    {
-        throw LatteError("Empty program", 0);
-    }
+    if (!program) fail("Empty program", 0);
 
-    Prog* prog = dynamic_cast<Prog*>(program);
-    if (!prog)
-    {
-        throw LatteError("Unexpected Program node", 0);
-    }
+    auto* prog = dynamic_cast<Prog*>(program);
+    if (!prog) fail("Unexpected Program node", 0);
 
-    // 1. collect function signatures (including main)
-    collectFunctionSignatures(program);
+    // Pass 1: klasy (nagłówki)
+    collectClassHeaders(program);
 
-    // 2. check for correct main
+    // Pass 2: sygnatury funkcji + pól/metod w klasach
+    collectSignatures(program);
+
+    // Sprawdź main
     auto mainFun = env_.lookupFunction("main");
     if (!mainFun.has_value())
-    {
-        throw LatteError("No function 'main' defined", 0);
-    }
+        fail("No function 'main' defined", 0);
+
     if (mainFun->result != LatteType::Int() || !mainFun->args.empty())
+        fail("Function 'main' must have type 'int' and no parameters", 0);
+
+    // Pass 3: typecheck ciał funkcji top-level
+    for (TopDef* td : *prog->listtopdef_)
     {
-        throw LatteError("Function 'main' must have type 'int' and no parameters", 0);
+        if (auto* fn = dynamic_cast<FnDef*>(td))
+            checkTopLevelFunction(fn);
     }
 
-    // 3. check every function correctness
-    ListTopDef* defs = prog->listtopdef_;
-    for (TopDef* td : *defs)
-    {
-        FnDef* fn = dynamic_cast<FnDef*>(td);
-        if (!fn)
-        {
-            continue;
-        }
-        checkFunction(fn);
-    }
+    // Pass 4: typecheck ciał metod w klasach
+    checkClassBodies(program);
 }
+
+// ---------------- builtins ----------------
 
 void TypeChecker::collectPredefinedFunctions()
 {
@@ -56,28 +53,24 @@ void TypeChecker::collectPredefinedFunctions()
         f.args = { LatteType::Int() };
         env_.enterFunction("printInt", f);
     }
-
     {
         FunInfo f;
         f.result = LatteType::Void();
         f.args = { LatteType::String() };
         env_.enterFunction("printString", f);
     }
-
     {
         FunInfo f;
         f.result = LatteType::Void();
         f.args = {};
         env_.enterFunction("error", f);
     }
-
     {
         FunInfo f;
         f.result = LatteType::Int();
         f.args = {};
         env_.enterFunction("readInt", f);
     }
-
     {
         FunInfo f;
         f.result = LatteType::String();
@@ -86,115 +79,327 @@ void TypeChecker::collectPredefinedFunctions()
     }
 }
 
-void TypeChecker::collectFunctionSignatures(Program* program)
+// ---------------- passes: classes & signatures ----------------
+
+void TypeChecker::collectClassHeaders(Program* program)
 {
-    Prog* prog = dynamic_cast<Prog*>(program);
-    if (!prog)
+    auto* prog = dynamic_cast<Prog*>(program);
+    if (!prog) fail("Unexpected Program node in collectClassHeaders", 0);
+
+    for (TopDef* td : *prog->listtopdef_)
     {
-        throw LatteError("Unexpected Program node in collectFunctionSignatures", 0);
+        if (auto* c = dynamic_cast<ClassDef*>(td))
+        {
+            ClassInfo ci;
+            ci.name = c->ident_;
+            ci.base = std::nullopt;
+
+            if (!env_.tryEnterClass(ci))
+                fail("Duplicate definition of class '" + ci.name + "'", 0);
+        }
+        else if (auto* ce = dynamic_cast<ClassExt*>(td))
+        {
+            ClassInfo ci;
+            ci.name = ce->ident_1;      // class X extends Y
+            ci.base = ce->ident_2;
+
+            if (!env_.tryEnterClass(ci))
+                fail("Duplicate definition of class '" + ci.name + "'", 0);
+        }
     }
 
-    ListTopDef* defs = prog->listtopdef_;
-    for (TopDef* td : *defs)
+    // weryfikacja "extends": baza musi istnieć (jeśli jest)
+    for (TopDef* td : *prog->listtopdef_)
     {
-        FnDef* fn = dynamic_cast<FnDef*>(td);
-        if (!fn)
+        if (auto* ce = dynamic_cast<ClassExt*>(td))
         {
-            continue;
+            auto baseName = ce->ident_2;
+            if (!env_.lookupClass(baseName).has_value())
+                fail("Class '" + std::string(ce->ident_1) + "' extends unknown class '" + baseName + "'", 0);
         }
-
-        std::string name = fn->ident_;
-
-        LatteType retType = typeFromAst(fn->type_);
-
-        std::vector<LatteType> argTypes;
-        ListArg* args = fn->listarg_;
-        if (args)
-        {
-            for (Arg* a : *args)
-            {
-                Ar* ar = dynamic_cast<Ar*>(a);
-                if (!ar) continue;
-                LatteType t = typeFromAst(ar->type_);
-                argTypes.push_back(t);
-            }
-        }
-
-        if (env_.lookupFunction(name).has_value())
-        {
-            throw LatteError("Duplicate definition of function '" + name + "'", 0);
-        }
-
-        FunInfo info;
-        info.result = retType;
-        info.args = argTypes;
-        env_.enterFunction(name, info);
     }
 }
 
-void TypeChecker::checkFunction(FnDef* fn)
+void TypeChecker::collectSignatures(Program* program)
+{
+    auto* prog = dynamic_cast<Prog*>(program);
+    if (!prog) fail("Unexpected Program node in collectSignatures", 0);
+
+    // 1) top-level function signatures
+    for (TopDef* td : *prog->listtopdef_)
+    {
+        if (auto* fn = dynamic_cast<FnDef*>(td))
+        {
+            std::string name = fn->ident_;
+            LatteType retType = typeFromAst(fn->type_);
+
+            std::vector<LatteType> argTypes;
+            if (fn->listarg_)
+            {
+                for (Arg* a : *fn->listarg_)
+                {
+                    auto* ar = dynamic_cast<Ar*>(a);
+                    if (!ar) continue;
+                    argTypes.push_back(typeFromAst(ar->type_));
+                }
+            }
+
+            if (env_.lookupFunction(name).has_value())
+                fail("Duplicate definition of function '" + name + "'", 0);
+
+            FunInfo info;
+            info.result = retType;
+            info.args = std::move(argTypes);
+            env_.enterFunction(name, info);
+        }
+    }
+
+    // 2) class fields/method signatures
+    // UWAGA: env_.lookupClass zwraca kopię, więc musimy pobrać, zmodyfikować, a potem "nadpisać" w env
+    // Najprościej: użyj tryEnterClass na nagłówkach, a tu: odczyt, modyfikacja i ponowny insert nie zadziała.
+    // Dlatego zakładam, że w Env::classes_ trzymasz wartości i lookupClass zwraca kopię.
+    // W takim wypadku dodaj w Env metodę "updateClass" albo zwracaj referencję.
+    //
+    // Jeżeli NIE masz update/ref, to i tak możesz użyć env_.tryEnterClass ponownie nie zmieniając, ale to nie wprowadzi pól.
+    //
+    // -> Żeby Cię nie blokować, zrobię minimalną wersję:
+    //    - signature-checking robię "na żywo" poprzez env_.lookupField/lookupMethod w hierarchii
+    //    - a właściwe mapy fields/methods przechowuję w Env (wymaga, by Env miał możliwość modyfikacji).
+    //
+    // Jeśli masz Env jak w mojej propozycji, dopisz w nim:
+    //   ClassInfo& getClassRef(const std::string& name);
+    // i wtedy poniższy kod zadziała.
+    //
+    // Jeśli nie masz - wklej później, a teraz przejdź do typecheckowania bazowych funkcji.
+
+    // --- wersja z getClassRef (zalecana) ---
+    // Zakładam: Env::getClassRef(name) -> ClassInfo& (referencja do wpisu w mapie).
+    // Jeśli nie masz, powiedz — dam Ci minimalny patch do Env.
+
+#ifdef HAS_ENV_GETCLASSREF
+    for (TopDef* td : *prog->listtopdef_)
+    {
+        if (auto* c = dynamic_cast<ClassDef*>(td))
+        {
+            auto& ci = env_.getClassRef(c->ident_);
+
+            int fieldIdx = 0;
+            int methodIdx = 0;
+
+            for (Member* m : *c->listmember_)
+            {
+                if (auto* f = dynamic_cast<Field*>(m))
+                {
+                    std::string fname = f->ident_;
+                    if (ci.fields.count(fname))
+                        fail("Duplicate field '" + fname + "' in class '" + ci.name + "'", 0);
+
+                    FieldInfo fi;
+                    fi.type = typeFromAst(f->type_);
+                    fi.index = fieldIdx++;
+                    ci.fields.emplace(fname, fi);
+                }
+                else if (auto* mm = dynamic_cast<Method*>(m))
+                {
+                    std::string mname = mm->ident_;
+                    if (ci.methods.count(mname))
+                        fail("Duplicate method '" + mname + "' in class '" + ci.name + "'", 0);
+
+                    MethodInfo mi;
+                    mi.index = methodIdx++;
+
+                    mi.sig.result = typeFromAst(mm->type_);
+                    mi.sig.args.clear();
+                    if (mm->listarg_)
+                    {
+                        for (Arg* a : *mm->listarg_)
+                        {
+                            auto* ar = dynamic_cast<Ar*>(a);
+                            mi.sig.args.push_back(typeFromAst(ar->type_));
+                        }
+                    }
+
+                    // objects1: bez override => jeśli baza ma metodę o tej samej nazwie -> błąd
+                    if (ci.base && env_.lookupMethod(*ci.base, mname).has_value())
+                        fail("Method '" + mname + "' in class '" + ci.name + "' overrides base method (not allowed in objects1)", 0);
+
+                    ci.methods.emplace(mname, mi);
+                }
+            }
+        }
+        else if (auto* ce = dynamic_cast<ClassExt*>(td))
+        {
+            auto& ci = env_.getClassRef(ce->ident_1);
+            ci.base = ce->ident_2;
+
+            int fieldIdx = 0;
+            int methodIdx = 0;
+
+            for (Member* m : *ce->listmember_)
+            {
+                if (auto* f = dynamic_cast<Field*>(m))
+                {
+                    std::string fname = f->ident_;
+                    if (ci.fields.count(fname))
+                        fail("Duplicate field '" + fname + "' in class '" + ci.name + "'", 0);
+
+                    FieldInfo fi;
+                    fi.type = typeFromAst(f->type_);
+                    fi.index = fieldIdx++;
+                    ci.fields.emplace(fname, fi);
+                }
+                else if (auto* mm = dynamic_cast<Method*>(m))
+                {
+                    std::string mname = mm->ident_;
+                    if (ci.methods.count(mname))
+                        fail("Duplicate method '" + mname + "' in class '" + ci.name + "'", 0);
+
+                    MethodInfo mi;
+                    mi.index = methodIdx++;
+
+                    mi.sig.result = typeFromAst(mm->type_);
+                    mi.sig.args.clear();
+                    if (mm->listarg_)
+                    {
+                        for (Arg* a : *mm->listarg_)
+                        {
+                            auto* ar = dynamic_cast<Ar*>(a);
+                            mi.sig.args.push_back(typeFromAst(ar->type_));
+                        }
+                    }
+
+                    if (ci.base && env_.lookupMethod(*ci.base, mname).has_value())
+                        fail("Method '" + mname + "' in class '" + ci.name + "' overrides base method (not allowed in objects1)", 0);
+
+                    ci.methods.emplace(mname, mi);
+                }
+            }
+        }
+    }
+#endif
+}
+
+// ---------------- typecheck bodies ----------------
+
+void TypeChecker::checkTopLevelFunction(FnDef* fn)
 {
     std::string name = fn->ident_;
     LatteType retType = typeFromAst(fn->type_);
 
+    currentClass_.reset();
+
     env_.pushScope();
 
-    // function args as variables in highest scope
-    ListArg* args = fn->listarg_;
-    if (args)
+    // args jako zmienne
+    if (fn->listarg_)
     {
-        for (Arg* a : *args)
+        for (Arg* a : *fn->listarg_)
         {
-            Ar* ar = dynamic_cast<Ar*>(a);
+            auto* ar = dynamic_cast<Ar*>(a);
             if (!ar) continue;
 
             std::string argName = ar->ident_;
             LatteType argType = typeFromAst(ar->type_);
 
             if (env_.isVarDeclaredInCurrentScope(argName))
-            {
-                throw LatteError("Duplicate parameter '" + argName + "' in function '" + name + "'", 0);
-            }
+                fail("Duplicate parameter '" + argName + "' in function '" + name + "'", 0);
+
             env_.declareVar(argName, VarInfo{ argType });
         }
     }
 
-    // function body + check if every path has return
     bool alwaysReturns = checkBlock(fn->block_, retType);
 
     env_.popScope();
 
     if (retType != LatteType::Void() && !alwaysReturns)
+        fail("Function '" + name + "' may exit without returning a value", 0);
+}
+
+void TypeChecker::checkClassBodies(Program* program)
+{
+    auto* prog = dynamic_cast<Prog*>(program);
+    if (!prog) fail("Unexpected Program node in checkClassBodies", 0);
+
+    for (TopDef* td : *prog->listtopdef_)
     {
-        throw LatteError("Function '" + name + "' may exit without returning a value", 0);
+        if (auto* c = dynamic_cast<ClassDef*>(td))
+        {
+            std::string cname = c->ident_;
+            for (Member* m : *c->listmember_)
+            {
+                if (auto* mm = dynamic_cast<Method*>(m))
+                    checkMethodBody(cname, mm);
+            }
+        }
+        else if (auto* ce = dynamic_cast<ClassExt*>(td))
+        {
+            std::string cname = ce->ident_1;
+            for (Member* m : *ce->listmember_)
+            {
+                if (auto* mm = dynamic_cast<Method*>(m))
+                    checkMethodBody(cname, mm);
+            }
+        }
     }
 }
 
-// check if this block gurantess return
-bool TypeChecker::checkBlock(Block* block, LatteType expectedReturn)
+void TypeChecker::checkMethodBody(const std::string& className, Method* m)
 {
-    Blk* blk = dynamic_cast<Blk*>(block);
-    if (!blk)
+    LatteType retType = typeFromAst(m->type_);
+    currentClass_ = className;
+
+    env_.pushScope();
+
+    // implicit this
+    env_.declareVar("this", VarInfo{ LatteType::Class(className) });
+
+    // params
+    if (m->listarg_)
     {
-        throw LatteError("Unexpected Block node", 0);
+        for (Arg* a : *m->listarg_)
+        {
+            auto* ar = dynamic_cast<Ar*>(a);
+            if (!ar) continue;
+
+            std::string argName = ar->ident_;
+            LatteType argType = typeFromAst(ar->type_);
+
+            if (env_.isVarDeclaredInCurrentScope(argName))
+                fail("Duplicate parameter '" + argName + "' in method '" + std::string(m->ident_) +
+                     "' of class '" + className + "'", 0);
+
+            env_.declareVar(argName, VarInfo{ argType });
+        }
     }
+
+    bool alwaysReturns = checkBlock(m->block_, retType);
+
+    env_.popScope();
+
+    if (retType != LatteType::Void() && !alwaysReturns)
+        fail("Method '" + std::string(m->ident_) + "' of class '" + className + "' may exit without returning a value", 0);
+
+    currentClass_.reset();
+}
+
+// ---------------- blocks / stmts ----------------
+
+bool TypeChecker::checkBlock(Block* block, const LatteType& expectedReturn)
+{
+    auto* blk = dynamic_cast<Blk*>(block);
+    if (!blk) fail("Unexpected Block node", 0);
 
     env_.pushScope();
 
     bool alwaysReturns = false;
 
-    ListStmt* stmts = blk->liststmt_;
-    if (stmts)
+    if (blk->liststmt_)
     {
-        for (Stmt* s : *stmts)
+        for (Stmt* s : *blk->liststmt_)
         {
             bool r = checkStmt(s, expectedReturn);
-
-            // only first return matters for always return
-            if (!alwaysReturns && r)
-            {
-                alwaysReturns = true;
-            }
+            if (!alwaysReturns && r) alwaysReturns = true;
         }
     }
 
@@ -202,51 +407,40 @@ bool TypeChecker::checkBlock(Block* block, LatteType expectedReturn)
     return alwaysReturns;
 }
 
-// check if this statement gurantess return
-bool TypeChecker::checkStmt(Stmt* stmt, LatteType expectedReturn)
+bool TypeChecker::checkStmt(Stmt* stmt, const LatteType& expectedReturn)
 {
-    if (dynamic_cast<Empty*>(stmt))
-    {
-        return false;
-    }
+    if (dynamic_cast<Empty*>(stmt)) return false;
 
-    if (BStmt* s = dynamic_cast<BStmt*>(stmt))
-    {
+    if (auto* s = dynamic_cast<BStmt*>(stmt))
         return checkBlock(s->block_, expectedReturn);
-    }
 
-    if (Decl* s = dynamic_cast<Decl*>(stmt))
+    if (auto* s = dynamic_cast<Decl*>(stmt))
     {
         LatteType t = typeFromAst(s->type_);
-        ListItem* items = s->listitem_;
+        if (t.kind == LatteTypeKind::Void)
+            fail("Cannot declare variable of type void", 0);
 
-        if (items)
+        if (s->listitem_)
         {
-            for (Item* it : *items)
+            for (Item* it : *s->listitem_)
             {
-                if (NoInit* ni = dynamic_cast<NoInit*>(it))
+                if (auto* ni = dynamic_cast<NoInit*>(it))
                 {
                     std::string name = ni->ident_;
-                    // only in current scope
                     if (env_.isVarDeclaredInCurrentScope(name))
-                    {
-                        throw LatteError("Variable '" + name + "' already declared in this scope", 0);
-                    }
+                        fail("Variable '" + name + "' already declared in this scope", 0);
                     env_.declareVar(name, VarInfo{ t });
                 }
-                else if (Init* ii = dynamic_cast<Init*>(it))
+                else if (auto* ii = dynamic_cast<Init*>(it))
                 {
                     std::string name = ii->ident_;
                     if (env_.isVarDeclaredInCurrentScope(name))
-                    {
-                        throw LatteError("Variable '" + name + "' already declared in this scope", 0);
-                    }
+                        fail("Variable '" + name + "' already declared in this scope", 0);
 
                     LatteType eType = checkExpr(ii->expr_);
-                    if (eType != t)
-                    {
-                        throw LatteError("Type mismatch in initialization of '" + name + "'", 0);
-                    }
+                    if (!isAssignable(t, eType))
+                        fail("Type mismatch in initialization of '" + name + "'", 0);
+
                     env_.declareVar(name, VarInfo{ t });
                 }
             }
@@ -254,216 +448,168 @@ bool TypeChecker::checkStmt(Stmt* stmt, LatteType expectedReturn)
         return false;
     }
 
-
-    if (Ass* s = dynamic_cast<Ass*>(stmt))
+    if (auto* s = dynamic_cast<Ass*>(stmt))
     {
-        std::string name = s->ident_;
-        auto varInfo = env_.lookupVar(name);
-        if (!varInfo.has_value())
-        {
-            throw LatteError("Assignment to undeclared variable '" + name + "'", 0);
-        }
-        LatteType eType = checkExpr(s->expr_);
-        if (eType != varInfo->type)
-        {
-            throw LatteError("Type mismatch in assignment to '" + name + "'", 0);
-        }
+        LatteType lType = checkLVal(s->lval_);
+        LatteType rType = checkExpr(s->expr_);
+        if (!isAssignable(lType, rType))
+            fail("Type mismatch in assignment", 0);
         return false;
     }
 
-    if (Incr* s = dynamic_cast<Incr*>(stmt))
+    if (auto* s = dynamic_cast<Incr*>(stmt))
     {
-        std::string name = s->ident_;
-        auto varInfo = env_.lookupVar(name);
-        if (!varInfo.has_value())
-        {
-            throw LatteError("Increment of undeclared variable '" + name + "'", 0);
-        }
-        if (varInfo->type != LatteType::Int())
-        {
-            throw LatteError("Increment '++' requires int variable", 0);
-        }
+        LatteType lType = checkLVal(s->lval_);
+        if (lType != LatteType::Int())
+            fail("Increment '++' requires int l-value", 0);
         return false;
     }
 
-    if (Decr* s = dynamic_cast<Decr*>(stmt))
+    if (auto* s = dynamic_cast<Decr*>(stmt))
     {
-        std::string name = s->ident_;
-        auto varInfo = env_.lookupVar(name);
-        if (!varInfo.has_value())
-        {
-            throw LatteError("Decrement of undeclared variable '" + name + "'", 0);
-        }
-        if (varInfo->type != LatteType::Int())
-        {
-            throw LatteError("Decrement '--' requires int variable", 0);
-        }
+        LatteType lType = checkLVal(s->lval_);
+        if (lType != LatteType::Int())
+            fail("Decrement '--' requires int l-value", 0);
         return false;
     }
 
-    if (VRet* s = dynamic_cast<VRet*>(stmt))
+    if (auto* s = dynamic_cast<VRet*>(stmt))
     {
         (void)s;
         if (expectedReturn != LatteType::Void())
-        {
-            throw LatteError("Missing return value in non-void function", 0);
-        }
+            fail("Missing return value in non-void function", 0);
         return true;
     }
 
-    if (Ret* s = dynamic_cast<Ret*>(stmt))
+    if (auto* s = dynamic_cast<Ret*>(stmt))
     {
         if (expectedReturn == LatteType::Void())
-        {
-            throw LatteError("Cannot return value from void function", 0);
-        }
+            fail("Cannot return value from void function", 0);
+
         LatteType eType = checkExpr(s->expr_);
-        if (eType != expectedReturn)
-        {
-            throw LatteError("Return expression has wrong type", 0);
-        }
+        if (!isAssignable(expectedReturn, eType))
+            fail("Return expression has wrong type", 0);
+
         return true;
     }
 
-    if (Cond* s = dynamic_cast<Cond*>(stmt))
+    if (auto* s = dynamic_cast<Cond*>(stmt))
     {
         LatteType condType = checkExpr(s->expr_);
         if (condType != LatteType::Bool())
-        {
-            throw LatteError("Condition in 'if' must be boolean", 0);
-        }
-
-        Expr* cond = s->expr_;
-
-        // if (true) S;
-        if (dynamic_cast<ELitTrue*>(cond))
-        {
-            return checkStmt(s->stmt_, expectedReturn);
-        }
-
-        // if (false) S;
-        if (dynamic_cast<ELitFalse*>(cond))
-        {
-            // block will never exectue but it's still typechecked
-            (void)checkStmt(s->stmt_, expectedReturn);
-            return false;
-        }
+            fail("Condition in 'if' must be boolean", 0);
 
         (void)checkStmt(s->stmt_, expectedReturn);
         return false;
     }
 
-    if (CondElse* s = dynamic_cast<CondElse*>(stmt))
+    if (auto* s = dynamic_cast<CondElse*>(stmt))
     {
         LatteType condType = checkExpr(s->expr_);
         if (condType != LatteType::Bool())
-        {
-            throw LatteError("Condition in 'if-else' must be boolean", 0);
-        }
-
-        Expr* cond = s->expr_;
-
-        // if (true) S1 else S2;
-        if (dynamic_cast<ELitTrue*>(cond))
-        {
-            bool thenRet = checkStmt(s->stmt_1, expectedReturn);
-            (void)checkStmt(s->stmt_2, expectedReturn);
-            return thenRet;
-        }
-
-        // if (false) S1 else S2;
-        if (dynamic_cast<ELitFalse*>(cond))
-        {
-            (void)checkStmt(s->stmt_1, expectedReturn);
-            bool elseRet = checkStmt(s->stmt_2, expectedReturn);
-            return elseRet;
-        }
+            fail("Condition in 'if-else' must be boolean", 0);
 
         bool thenRet = checkStmt(s->stmt_1, expectedReturn);
         bool elseRet = checkStmt(s->stmt_2, expectedReturn);
         return thenRet && elseRet;
     }
 
-    if (While* s = dynamic_cast<While*>(stmt))
+    if (auto* s = dynamic_cast<While*>(stmt))
     {
         LatteType condType = checkExpr(s->expr_);
         if (condType != LatteType::Bool())
-        {
-            throw LatteError("Condition in 'while' must be boolean", 0);
-        }
+            fail("Condition in 'while' must be boolean", 0);
 
         (void)checkStmt(s->stmt_, expectedReturn);
         return false;
     }
 
-    if (SExp* s = dynamic_cast<SExp*>(stmt))
+    if (auto* s = dynamic_cast<ForEach*>(stmt))
+    {
+        LatteType iterT = checkExpr(s->expr_);
+        LatteType varT  = typeFromAst(s->type_);
+
+        // expr musi byc tablica
+        if (iterT.kind != LatteTypeKind::Array || !iterT.elem)
+            fail("foreach expects array expression on the right side", 0);
+
+        if (!(*iterT.elem == varT))
+            fail("foreach variable type does not match array element type", 0);
+
+        env_.pushScope();
+        std::string varName = s->ident_;
+        if (env_.isVarDeclaredInCurrentScope(varName))
+            fail("Duplicate foreach variable '" + varName + "' in this scope", 0);
+        env_.declareVar(varName, VarInfo{ varT });
+
+        (void)checkStmt(s->stmt_, expectedReturn);
+
+        env_.popScope();
+        return false;
+    }
+
+    if (auto* s = dynamic_cast<SExp*>(stmt))
     {
         (void)checkExpr(s->expr_);
         return false;
     }
 
-    throw LatteError("Unknown statement kind (not handled in typechecker)", 0);
+    fail("Unknown statement kind (not handled in typechecker)", 0);
 }
 
+// ---------------- expressions ----------------
 
 LatteType TypeChecker::checkExpr(Expr* expr)
 {
-    if (!expr)
-    {
-        return LatteType::Unknown();
-    }
+    if (!expr) return LatteType::Unknown();
 
     // EOr
-    if (EOr* e = dynamic_cast<EOr*>(expr))
+    if (auto* e = dynamic_cast<EOr*>(expr))
     {
         LatteType t1 = checkExpr(e->expr_1);
         LatteType t2 = checkExpr(e->expr_2);
         if (t1 != LatteType::Bool() || t2 != LatteType::Bool())
-        {
-            throw LatteError("Operator '||' expects boolean operands", 0);
-        }
+            fail("Operator '||' expects boolean operands", 0);
         return LatteType::Bool();
     }
 
     // EAnd
-    if (EAnd* e = dynamic_cast<EAnd*>(expr))
+    if (auto* e = dynamic_cast<EAnd*>(expr))
     {
         LatteType t1 = checkExpr(e->expr_1);
         LatteType t2 = checkExpr(e->expr_2);
         if (t1 != LatteType::Bool() || t2 != LatteType::Bool())
-        {
-            throw LatteError("Operator '&&' expects boolean operands", 0);
-        }
+            fail("Operator '&&' expects boolean operands", 0);
         return LatteType::Bool();
     }
 
     // ERel
-    if (ERel* e = dynamic_cast<ERel*>(expr))
+    if (auto* e = dynamic_cast<ERel*>(expr))
     {
         LatteType t1 = checkExpr(e->expr_1);
         LatteType t2 = checkExpr(e->expr_2);
-
         RelOp* op = e->relop_;
 
         if (dynamic_cast<EQU*>(op) || dynamic_cast<NE*>(op))
         {
-            if (t1 != t2)
-            {
-                throw LatteError("Operator '=='/'!=' requires same types on both sides", 0);
-            }
+            // == / != : dopuszczamy: identyczne typy, albo null vs ref
+            if (t1 == t2) return LatteType::Bool();
+            if ((t1.kind == LatteTypeKind::Null && t2.isRef()) ||
+                (t2.kind == LatteTypeKind::Null && t1.isRef()))
+                return LatteType::Bool();
+
+            fail("Operator '=='/'!=' requires same types or null vs reference", 0);
         }
         else
         {
             if (t1 != LatteType::Int() || t2 != LatteType::Int())
-            {
-                throw LatteError("Relational operator requires integer operands", 0);
-            }
+                fail("Relational operator requires integer operands", 0);
+            return LatteType::Bool();
         }
-        return LatteType::Bool();
     }
 
     // EAdd
-    if (EAdd* e = dynamic_cast<EAdd*>(expr))
+    if (auto* e = dynamic_cast<EAdd*>(expr))
     {
         LatteType t1 = checkExpr(e->expr_1);
         LatteType t2 = checkExpr(e->expr_2);
@@ -472,164 +618,367 @@ LatteType TypeChecker::checkExpr(Expr* expr)
         if (dynamic_cast<Plus*>(op))
         {
             if (t1 == LatteType::Int() && t2 == LatteType::Int())
-            {
                 return LatteType::Int();
-            }
             if (t1 == LatteType::String() && t2 == LatteType::String())
-            {
                 return LatteType::String();
-            }
-            throw LatteError("Operator '+' supports int+int or string+string only", 0);
+
+            fail("Operator '+' supports int+int or string+string only", 0);
         }
         if (dynamic_cast<Minus*>(op))
         {
             if (t1 == LatteType::Int() && t2 == LatteType::Int())
-            {
                 return LatteType::Int();
-            }
-            throw LatteError("Operator '-' supports int-int only", 0);
+            fail("Operator '-' supports int-int only", 0);
         }
     }
 
     // EMul
-    if (EMul* e = dynamic_cast<EMul*>(expr))
+    if (auto* e = dynamic_cast<EMul*>(expr))
     {
         LatteType t1 = checkExpr(e->expr_1);
         LatteType t2 = checkExpr(e->expr_2);
         if (t1 != LatteType::Int() || t2 != LatteType::Int())
-        {
-            throw LatteError("Operator '*', '/' or '%' requires int operands", 0);
-        }
+            fail("Operator '*', '/' or '%' requires int operands", 0);
         return LatteType::Int();
     }
 
-    // Neg
-    if (Neg* e = dynamic_cast<Neg*>(expr))
+    // Neg / Not są Expr5, ale checkExpr dostaje Expr (po coercions) — BNFC generuje klasy też jako Expr,
+    // więc łapiemy je normalnie:
+    if (auto* e = dynamic_cast<Neg*>(expr))
     {
-        LatteType t = checkExpr(e->expr_);
+        LatteType t = checkExpr((Expr*)e->expr_);
         if (t != LatteType::Int())
-        {
-            throw LatteError("Unary '-' expects int operand", 0);
-        }
+            fail("Unary '-' expects int operand", 0);
         return LatteType::Int();
     }
-
-    // Not
-    if (Not* e = dynamic_cast<Not*>(expr))
+    if (auto* e = dynamic_cast<Not*>(expr))
     {
-        LatteType t = checkExpr(e->expr_);
+        LatteType t = checkExpr((Expr*)e->expr_);
         if (t != LatteType::Bool())
-        {
-            throw LatteError("Logical '!' expects boolean operand", 0);
-        }
+            fail("Logical '!' expects boolean operand", 0);
         return LatteType::Bool();
     }
 
-    // Zmienne / literały / wywołania / string
+    // Reszta siedzi w Expr6 (po coercions)
+    if (auto* e6 = dynamic_cast<Expr6*>(expr))
+        return checkExpr6(e6);
 
-    if (EVar* e = dynamic_cast<EVar*>(expr))
+    fail("Unknown expression kind (not handled in typechecker)", 0);
+}
+
+LatteType TypeChecker::checkExpr6(Expr6* expr)
+{
+    // (Expr)
+    if (auto* e = dynamic_cast<EParen*>(expr))
+        return checkExpr(e->expr_);
+
+    // null
+    if (dynamic_cast<ENull*>(expr))
+        return LatteType::Null();
+
+    // (Type) Expr6
+    if (auto* e = dynamic_cast<ECast*>(expr))
+    {
+        LatteType dst = typeFromAst(e->type_);
+        LatteType src = checkExpr6(e->expr_); // tylko Expr6 wg gramatyki
+
+        // minimalnie: pozwalamy rzutować null na dowolny ref
+        if (src.kind == LatteTypeKind::Null && dst.isRef())
+            return dst;
+
+        // klasy: pozwalamy na cast w hierarchii (w obie strony) — jak w Javie (bez weryfikacji runtime na razie)
+        if (dst.kind == LatteTypeKind::Class && src.kind == LatteTypeKind::Class)
+        {
+            if (isSubClassOf(src.name, dst.name) || isSubClassOf(dst.name, src.name) || src.name == dst.name)
+                return dst;
+        }
+
+        // tablice: tylko ten sam typ (na razie)
+        if (dst.kind == LatteTypeKind::Array && src.kind == LatteTypeKind::Array && dst == src)
+            return dst;
+
+        // string: tylko string
+        if (dst.kind == LatteTypeKind::String && src.kind == LatteTypeKind::String)
+            return dst;
+
+        fail("Invalid cast", 0);
+    }
+
+    // a[i]
+    if (auto* e = dynamic_cast<EIndex*>(expr))
+    {
+        LatteType arrT = checkExpr6(e->expr_1);
+        LatteType idxT = checkExpr(e->expr_2);
+        if (idxT != LatteType::Int())
+            fail("Array index must be int", 0);
+
+        if (arrT.kind != LatteTypeKind::Array || !arrT.elem)
+            fail("Indexing requires array type", 0);
+
+        return *arrT.elem;
+    }
+
+    // a.length
+    if (auto* e = dynamic_cast<ELength*>(expr))
+    {
+        LatteType arrT = checkExpr6(e->expr_);
+        if (arrT.kind != LatteTypeKind::Array)
+            fail("'.length' is valid only on arrays", 0);
+        return LatteType::Int();
+    }
+
+    // new T[n]
+    if (auto* e = dynamic_cast<ENewArr*>(expr))
+    {
+        LatteType bt = baseTypeFromAst(e->basetype_);
+        if (bt.kind == LatteTypeKind::Void)
+            fail("Cannot create array of void", 0);
+
+        LatteType sizeT = checkExpr(e->expr_);
+        if (sizeT != LatteType::Int())
+            fail("Array size must be int", 0);
+
+        return LatteType::Array(bt);
+    }
+
+    // new C
+    if (auto* e = dynamic_cast<ENewObj*>(expr))
+    {
+        std::string cname = e->ident_;
+        if (!env_.lookupClass(cname).has_value())
+            fail("Unknown class '" + cname + "'", 0);
+        return LatteType::Class(cname);
+    }
+
+    // e.f (field access)
+    if (auto* e = dynamic_cast<EField*>(expr))
+    {
+        LatteType objT = checkExpr6(e->expr_);
+        if (objT.kind != LatteTypeKind::Class)
+            fail("Field access requires class type", 0);
+
+        auto fi = env_.lookupField(objT.name, e->ident_);
+        if (!fi.has_value())
+            fail("Unknown field '" + std::string(e->ident_) + "' in class '" + objT.name + "'", 0);
+
+        return fi->type;
+    }
+
+    // e.m(args)
+    if (auto* e = dynamic_cast<EMethod*>(expr))
+    {
+        LatteType objT = checkExpr6(e->expr_);
+        if (objT.kind != LatteTypeKind::Class)
+            fail("Method call requires class type", 0);
+
+        auto mi = env_.lookupMethod(objT.name, e->ident_);
+        if (!mi.has_value())
+            fail("Unknown method '" + std::string(e->ident_) + "' in class '" + objT.name + "'", 0);
+
+        std::vector<LatteType> callArgs;
+        if (e->listexpr_)
+        {
+            for (Expr* a : *e->listexpr_)
+                callArgs.push_back(checkExpr(a));
+        }
+
+        if (callArgs.size() != mi->sig.args.size())
+            fail("Method '" + std::string(e->ident_) + "' called with wrong number of arguments", 0);
+
+        for (std::size_t i = 0; i < callArgs.size(); ++i)
+        {
+            if (!isAssignable(mi->sig.args[i], callArgs[i]))
+                fail("Method '" + std::string(e->ident_) + "': argument " + std::to_string(i + 1) + " has wrong type", 0);
+        }
+
+        return mi->sig.result;
+    }
+
+    // Ident (variable OR field in method)
+    if (auto* e = dynamic_cast<EVar*>(expr))
     {
         std::string name = e->ident_;
-        auto varInfo = env_.lookupVar(name);
-        if (!varInfo.has_value())
-        {
-            throw LatteError("Use of undeclared variable '" + name + "'", 0);
-        }
-        return varInfo->type;
+        auto t = lookupVarOrFieldType(name);
+        if (!t.has_value())
+            fail("Use of undeclared identifier '" + name + "'", 0);
+        return *t;
     }
 
-    if (ELitInt* e = dynamic_cast<ELitInt*>(expr))
-    {
-        (void)e;
+    if (dynamic_cast<ELitInt*>(expr))
         return LatteType::Int();
-    }
 
-    if (ELitTrue* e = dynamic_cast<ELitTrue*>(expr))
-    {
-        (void)e;
+    if (dynamic_cast<ELitTrue*>(expr) || dynamic_cast<ELitFalse*>(expr))
         return LatteType::Bool();
-    }
 
-    if (ELitFalse* e = dynamic_cast<ELitFalse*>(expr))
-    {
-        (void)e;
-        return LatteType::Bool();
-    }
-
-    if (EString* e = dynamic_cast<EString*>(expr))
-    {
-        (void)e;
+    if (dynamic_cast<EString*>(expr))
         return LatteType::String();
-    }
 
-    if (EApp* e = dynamic_cast<EApp*>(expr))
+    // f(args) — function call
+    if (auto* e = dynamic_cast<EApp*>(expr))
     {
         std::string fname = e->ident_;
         auto finfo = env_.lookupFunction(fname);
         if (!finfo.has_value())
-        {
-            throw LatteError("Call to undefined function '" + fname + "'", 0);
-        }
+            fail("Call to undefined function '" + fname + "'", 0);
 
-        ListExpr* args = e->listexpr_;
         std::vector<LatteType> callArgTypes;
-        if (args)
+        if (e->listexpr_)
         {
-            for (Expr* a : *args)
-            {
+            for (Expr* a : *e->listexpr_)
                 callArgTypes.push_back(checkExpr(a));
-            }
         }
 
         if (callArgTypes.size() != finfo->args.size())
-        {
-            throw LatteError("Function '" + fname + "' called with wrong number of arguments", 0);
-        }
+            fail("Function '" + fname + "' called with wrong number of arguments", 0);
 
         for (std::size_t i = 0; i < callArgTypes.size(); ++i)
         {
-            if (callArgTypes[i] != finfo->args[i])
-            {
-                throw LatteError(
-                    "Function '" + fname + "': argument " +
-                    std::to_string(i + 1) + " has wrong type", 0);
-            }
+            if (!isAssignable(finfo->args[i], callArgTypes[i]))
+                fail("Function '" + fname + "': argument " + std::to_string(i + 1) + " has wrong type", 0);
         }
 
         return finfo->result;
     }
 
-    throw LatteError("Unknown expression kind (not handled in typechecker)", 0);
+    fail("Unknown Expr6 kind (not handled in typechecker)", 0);
 }
+
+// ---------------- LVal ----------------
+
+LatteType TypeChecker::checkLVal(LVal* lv)
+{
+    if (auto* v = dynamic_cast<LVar*>(lv))
+    {
+        std::string name = v->ident_;
+
+        // w metodzie: ident może być polem
+        auto t = lookupVarOrFieldType(name);
+        if (!t.has_value())
+            fail("Assignment to undeclared identifier '" + name + "'", 0);
+
+        return *t;
+    }
+
+    if (auto* f = dynamic_cast<LField*>(lv))
+    {
+        LatteType objT = checkExpr6(f->expr_); // Expr6 "." Ident
+        if (objT.kind != LatteTypeKind::Class)
+            fail("Field l-value requires class type", 0);
+
+        auto fi = env_.lookupField(objT.name, f->ident_);
+        if (!fi.has_value())
+            fail("Unknown field '" + std::string(f->ident_) + "' in class '" + objT.name + "'", 0);
+
+        return fi->type;
+    }
+
+    if (auto* idx = dynamic_cast<LIndex*>(lv))
+    {
+        LatteType arrT = checkExpr6(idx->expr_1);
+        LatteType iT   = checkExpr(idx->expr_2);
+
+        if (iT != LatteType::Int())
+            fail("Array index must be int", 0);
+
+        if (arrT.kind != LatteTypeKind::Array || !arrT.elem)
+            fail("Indexing l-value requires array type", 0);
+
+        return *arrT.elem;
+    }
+
+    fail("Unknown LVal kind", 0);
+}
+
+// ---------------- types ----------------
 
 LatteType TypeChecker::typeFromAst(Type* ty)
 {
-    if (!ty)
-    {
-        return LatteType::Unknown();
-    }
+    if (!ty) return LatteType::Unknown();
 
-    if (dynamic_cast<Int*>(ty))
+    if (auto* t = dynamic_cast<TBase*>(ty))
+        return baseTypeFromAst(t->basetype_);
+
+    if (auto* t = dynamic_cast<TArr*>(ty))
     {
-        return LatteType::Int();
-    }
-    if (dynamic_cast<Bool*>(ty))
-    {
-        return LatteType::Bool();
-    }
-    if (dynamic_cast<Str*>(ty))
-    {
-        return LatteType::String();
-    }
-    if (dynamic_cast<Void*>(ty))
-    {
-        return LatteType::Void();
+        LatteType bt = baseTypeFromAst(t->basetype_);
+        if (bt.kind == LatteTypeKind::Void)
+            fail("void[] is not allowed", 0);
+        return LatteType::Array(bt);
     }
 
     if (dynamic_cast<Fun*>(ty))
+        fail("Function types are not supported in this frontend", 0);
+
+    return LatteType::Unknown();
+}
+
+LatteType TypeChecker::baseTypeFromAst(BaseType* bt)
+{
+    if (!bt) return LatteType::Unknown();
+
+    if (dynamic_cast<Int*>(bt))  return LatteType::Int();
+    if (dynamic_cast<Bool*>(bt)) return LatteType::Bool();
+    if (dynamic_cast<Str*>(bt))  return LatteType::String();
+    if (dynamic_cast<Void*>(bt)) return LatteType::Void();
+
+    if (auto* c = dynamic_cast<classT*>(bt))
     {
-        throw LatteError("Function types are not supported in this frontend", 0);
+        std::string cname = c->ident_;
+        if (!env_.lookupClass(cname).has_value())
+            fail("Unknown class type '" + cname + "'", 0);
+        return LatteType::Class(cname);
     }
 
     return LatteType::Unknown();
+}
+
+// ---------------- assignability / subtyping ----------------
+
+bool TypeChecker::isSubClassOf(const std::string& sub, const std::string& base) const
+{
+    if (sub == base) return true;
+
+    auto cur = env_.lookupClass(sub);
+    while (cur.has_value() && cur->base.has_value())
+    {
+        if (*cur->base == base) return true;
+        cur = env_.lookupClass(*cur->base);
+    }
+    return false;
+}
+
+bool TypeChecker::isAssignable(const LatteType& dst, const LatteType& src) const
+{
+    if (dst == src) return true;
+
+    // null -> dowolny ref
+    if (src.kind == LatteTypeKind::Null && dst.isRef())
+        return true;
+
+    // klasy: src może być podtypem dst
+    if (dst.kind == LatteTypeKind::Class && src.kind == LatteTypeKind::Class)
+        return isSubClassOf(src.name, dst.name);
+
+    // tablice: na razie tylko dokładnie taki sam typ
+    if (dst.kind == LatteTypeKind::Array && src.kind == LatteTypeKind::Array)
+        return dst == src;
+
+    return false;
+}
+
+// ---------------- method context name resolution ----------------
+
+std::optional<LatteType> TypeChecker::lookupVarOrFieldType(const std::string& name) const
+{
+    if (auto vi = env_.lookupVar(name))
+        return vi->type;
+
+    if (currentClass_.has_value())
+    {
+        auto fi = env_.lookupField(*currentClass_, name);
+        if (fi.has_value())
+            return fi->type;
+    }
+
+    return std::nullopt;
 }

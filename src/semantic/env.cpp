@@ -122,3 +122,10 @@ std::optional<MethodInfo> Env::lookupMethod(const std::string& className, const 
     }
     return std::nullopt;
 }
+
+ClassInfo& Env::getClassRef(const std::string& name)
+{
+    auto it = classes_.find(name);
+    if (it == classes_.end()) throw std::runtime_error("Unknown class: " + name);
+    return it->second;
+}
