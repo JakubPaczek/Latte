@@ -1,3 +1,25 @@
+2.0
+
+SetUp:
+(Uruchamiane na wsl ...) (x86_64?)
+GCC Compiler for C and C++
+Bison version >= 1.875
+Flex version >= 2.5.4
+
+Źródła:
+https://bnfc.digitalgrammars.com/tutorial/bnfc-tutorial.html
+https://www.mimuw.edu.pl/~ben/Zajecia/Mrj2025/Latte/
+
+
+
+
+
+
+
+
+
+
+
 # Latte Compiler – Frontend
 
 Implementacja frontendu kompilatora języka Latte (parsowanie i analiza semantyczna).  
