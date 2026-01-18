@@ -1,6 +1,6 @@
 #pragma once
-#include "ir.hpp"
-#include "regalloc.hpp"
+#include "ir.h"
+#include "regalloc.h"
 #include <ostream>
 #include <unordered_set>
 

@@ -58,15 +58,11 @@ frontend:
 # C++ compilation
 # ------------------------------------------------------------
 
-# frontend-only main
-$(SRC_DIR)/main_frontend.o: $(SRC_DIR)/main_frontend.cpp \
-  $(SEM_DIR)/typecheck.hpp $(SEM_DIR)/latte_error.hpp
-	$(CXX) $(CXXFLAGS) -I$(FRONTEND_DIR) -I$(SRC_DIR) -I$(SEM_DIR) -c $< -o $@
+$(SRC_DIR)/latc.o: $(SRC_DIR)/latc.cpp
+	$(CXX) $(CXXFLAGS) -I"$(FRONTEND_DIR)" -I"$(SRC_DIR)" -I"$(SEM_DIR)" -c $< -o $@
 
-# full compiler main (wyłączone)
-# $(SRC_DIR)/latte_main.o: $(SRC_DIR)/latte_main.cpp \
-#   $(SEM_DIR)/typecheck.hpp $(SEM_DIR)/latte_error.hpp
-# 	$(CXX) $(CXXFLAGS) -I$(FRONTEND_DIR) -I$(SRC_DIR) -I$(SEM_DIR) -c $< -o $@
+# $(SRC_DIR)/latc_x86_64.o: $(SRC_DIR)/latc_x86_64.cpp
+# 	$(CXX) $(CXXFLAGS) -I"$(FRONTEND_DIR)" -I"$(SRC_DIR)" -I"$(SEM_DIR)" -c $< -o $@
 
 $(SEM_DIR)/typecheck.o: $(SEM_DIR)/typecheck.cpp \
   $(SEM_DIR)/typecheck.hpp $(SEM_DIR)/env.hpp $(SEM_DIR)/latte_error.hpp
@@ -99,10 +95,10 @@ $(SEM_DIR)/latte_error.o: $(SEM_DIR)/latte_error.cpp $(SEM_DIR)/latte_error.hpp
 $(TARGET): frontend $(FRONTEND_MAIN_OBJ) $(CORE_COMMON_OBJS) $(FRONTEND_OBJS)
 	$(CXX) $(CXXFLAGS) -I"$(FRONTEND_DIR)" -I"$(SRC_DIR)" -o $@ \
 	  $(FRONTEND_MAIN_OBJ) $(CORE_COMMON_OBJS) $(FRONTEND_OBJS)
-	  
-# latc_x86_64 = FULL COMPILER (wyłączone)
+
+# latc_x86_64 = full compiler
 # $(TARGET_X86_64): frontend $(FULL_MAIN_OBJ) $(CORE_COMMON_OBJS) $(BACKEND_OBJS) $(FRONTEND_OBJS) $(RUNTIME_OBJ)
-# 	$(CXX) $(CXXFLAGS) -I$(FRONTEND_DIR) -I$(SRC_DIR) -I$(SEM_DIR) -o $@ \
+# 	$(CXX) $(CXXFLAGS) -I"$(FRONTEND_DIR)" -I"$(SRC_DIR)" -o $@ \
 # 	  $(FULL_MAIN_OBJ) $(CORE_COMMON_OBJS) $(BACKEND_OBJS) $(FRONTEND_OBJS)
 
 # ------------------------------------------------------------

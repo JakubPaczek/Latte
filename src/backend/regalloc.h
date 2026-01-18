@@ -1,5 +1,5 @@
 #pragma once
-#include "ir.hpp"
+#include "ir.h"
 #include <array>
 #include <unordered_map>
 #include <unordered_set>

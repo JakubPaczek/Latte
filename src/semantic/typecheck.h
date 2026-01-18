@@ -1,7 +1,7 @@
 #pragma once
 
-#include "env.hpp"
-#include "latte_error.hpp"
+#include "env.h"
+#include "latte_error.h"
 #include "frontend/Absyn.H"
 
 class TypeChecker {

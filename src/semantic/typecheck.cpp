@@ -1,4 +1,4 @@
-#include "typecheck.hpp"
+#include "typecheck.h"
 
 // BNFC AST
 #include "frontend/Absyn.H"

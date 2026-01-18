@@ -1,4 +1,4 @@
-#include "backend/regalloc.hpp"
+#include "backend/regalloc.h"
 #include <algorithm>
 #include <stdexcept>
 
