@@ -7,8 +7,8 @@
 #include "frontend/Parser.H"
 #include "frontend/Absyn.H"
 
-#include "semantic/typecheck.hpp"
-#include "semantic/latte_error.hpp"
+#include "semantic/typecheck.h"
+#include "semantic/latte_error.h"
 
 int main(int argc, char* argv[])
 {
