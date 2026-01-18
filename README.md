@@ -60,3 +60,9 @@ Brak. Projekt obejmuje jedynie frontend.
 ## Użyte materiały i inspiracje
 
 -   Wsparcie narzędziowe, struktura projektu (szkielety funkcji) oraz część dokumentacji przygotowane z pomocą ChatGPT (organizacja kodu, Makefile, README).
+
+
+frontend // bnfc fieles = leksycal analysis, parser -> ast tree
+semantic // semantic analysis files
+latte_error // pretty error
+Env // symbol table and scope management through map stack
