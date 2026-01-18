@@ -23,8 +23,8 @@ FRONTEND_OBJS := \
   $(FRONTEND_DIR)/Lexer.o
 
 # Two separate mains:
-FRONTEND_MAIN_OBJ := $(SRC_DIR)/main_frontend.o
-# FULL_MAIN_OBJ     := $(SRC_DIR)/latte_main.o   # full compiler main (wyłączone)
+FRONTEND_MAIN_OBJ := $(SRC_DIR)/latc.o
+# FULL_MAIN_OBJ     := $(SRC_DIR)/latc_x86_64.o
 
 CORE_COMMON_OBJS := \
   $(SEM_DIR)/typecheck.o \
@@ -95,11 +95,11 @@ $(SEM_DIR)/latte_error.o: $(SEM_DIR)/latte_error.cpp $(SEM_DIR)/latte_error.hpp
 # Link compiler (host)
 # ------------------------------------------------------------
 
-# latc = FRONTEND ONLY
+# latc = frontend-only
 $(TARGET): frontend $(FRONTEND_MAIN_OBJ) $(CORE_COMMON_OBJS) $(FRONTEND_OBJS)
-	$(CXX) $(CXXFLAGS) -I$(FRONTEND_DIR) -I$(SRC_DIR) -I$(SEM_DIR) -o $@ \
+	$(CXX) $(CXXFLAGS) -I"$(FRONTEND_DIR)" -I"$(SRC_DIR)" -o $@ \
 	  $(FRONTEND_MAIN_OBJ) $(CORE_COMMON_OBJS) $(FRONTEND_OBJS)
-
+	  
 # latc_x86_64 = FULL COMPILER (wyłączone)
 # $(TARGET_X86_64): frontend $(FULL_MAIN_OBJ) $(CORE_COMMON_OBJS) $(BACKEND_OBJS) $(FRONTEND_OBJS) $(RUNTIME_OBJ)
 # 	$(CXX) $(CXXFLAGS) -I$(FRONTEND_DIR) -I$(SRC_DIR) -I$(SEM_DIR) -o $@ \
