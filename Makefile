@@ -25,7 +25,7 @@ LIB_DIR      := lib
 
 # Path to your grammar (.cf)
 # CHANGE THIS if your file name/location is different:
-GRAMMAR := LatteCPP.cf
+GRAMMAR := $(SRC_DIR)/LatteCPP.cf
 # e.g. GRAMMAR := $(FRONTEND_DIR)/LatteCPP.cf
 
 # -----------------------------
