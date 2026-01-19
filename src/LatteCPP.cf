@@ -110,11 +110,11 @@ EString.        Expr7 ::= String ;
 
 EApp.           Expr7 ::= Ident "(" [Expr] ")" ;
 
-EIndex.         Expr6 ::= Expr6 "[" Expr "]" ;
+EIndex.         Expr7 ::= Expr7 "[" Expr "]" ;
 
-EMethod.        Expr6 ::= Expr6 "." Ident "(" [Expr] ")" ;
+EMethod.        Expr7 ::= Expr7 "." Ident "(" [Expr] ")" ;
 
-EField.         Expr6 ::= Expr6 "." Ident ;
+EField.         Expr7 ::= Expr7 "." Ident ;
 
 Neg.            Expr5 ::= "-" Expr6 ;
 

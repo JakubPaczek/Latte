@@ -807,43 +807,43 @@ void PrintAbsyn::visitEApp(EApp *p)
 void PrintAbsyn::visitEIndex(EIndex *p)
 {
   int oldi = _i_;
-  if (oldi > 6) render(_L_PAREN);
+  if (oldi > 7) render(_L_PAREN);
 
-  _i_ = 6; p->expr_1->accept(this);
+  _i_ = 7; p->expr_1->accept(this);
   render('[');
   _i_ = 0; p->expr_2->accept(this);
   render(']');
 
-  if (oldi > 6) render(_R_PAREN);
+  if (oldi > 7) render(_R_PAREN);
   _i_ = oldi;
 }
 
 void PrintAbsyn::visitEMethod(EMethod *p)
 {
   int oldi = _i_;
-  if (oldi > 6) render(_L_PAREN);
+  if (oldi > 7) render(_L_PAREN);
 
-  _i_ = 6; p->expr_->accept(this);
+  _i_ = 7; p->expr_->accept(this);
   render('.');
   visitIdent(p->ident_);
   render('(');
   _i_ = 0; visitListExpr(p->listexpr_);
   render(')');
 
-  if (oldi > 6) render(_R_PAREN);
+  if (oldi > 7) render(_R_PAREN);
   _i_ = oldi;
 }
 
 void PrintAbsyn::visitEField(EField *p)
 {
   int oldi = _i_;
-  if (oldi > 6) render(_L_PAREN);
+  if (oldi > 7) render(_L_PAREN);
 
-  _i_ = 6; p->expr_->accept(this);
+  _i_ = 7; p->expr_->accept(this);
   render('.');
   visitIdent(p->ident_);
 
-  if (oldi > 6) render(_R_PAREN);
+  if (oldi > 7) render(_R_PAREN);
   _i_ = oldi;
 }
 
