@@ -134,20 +134,20 @@ LatteType TypeChecker::dtypeFromAst(DType* ty)
     if (!ty) return LatteType::Unknown();
 
     if (dynamic_cast<DVoid*>(ty))
-        return LatteType::Void(); // "void" only allowed as return type
+        return LatteType::Void();       // "void" only allowed as return type
 
     if (auto* b = dynamic_cast<DTypeBase*>(ty))
-        return baseTypeFromAst(b->basetype_);
+        return baseTypeFromAst(b->basetype_); // int/string/bool/class
 
     if (auto* a = dynamic_cast<DTypeArr*>(ty))
     {
         LatteType bt = baseTypeFromAst(a->basetype_);
         if (bt.kind == LatteTypeKind::Void)
             fail("void[] is not allowed", 0);
-        return LatteType::Array(bt);
+        return LatteType::Array(bt);    // 1d arrays
     }
 
-    return LatteType::Unknown();
+    return LatteType::Unknown();        // fallback
 }
 
 void TypeChecker::collectSignatures(Program* program)
@@ -155,7 +155,7 @@ void TypeChecker::collectSignatures(Program* program)
     auto* prog = dynamic_cast<Prog*>(program);
     if (!prog) fail("Unexpected Program node in collectSignatures", 0);
 
-    // 1) top-level function signatures
+    // 1. top-level function signatures
     for (TopDef* td : *prog->listtopdef_)
     {
         if (auto* fn = dynamic_cast<FnDef*>(td))
@@ -184,6 +184,7 @@ void TypeChecker::collectSignatures(Program* program)
         }
     }
 
+    // 2. collect class fields and methods
     for (TopDef* td : *prog->listtopdef_)
     {
         if (auto* c = dynamic_cast<ClassDef*>(td))
@@ -300,11 +301,11 @@ void TypeChecker::checkTopLevelFunction(FnDef* fn)
     std::string name = fn->ident_;
     LatteType retType = dtypeFromAst(fn->dtype_);
 
-    currentClass_.reset();
+    currentClass_.reset();  // not inside a class method now
 
-    env_.pushScope();
+    env_.pushScope();       // new scope for parameters + locals
 
-    // args jako zmienne
+    // insert parameters as local variables
     if (fn->listarg_)
     {
         for (Arg* a : *fn->listarg_)
@@ -324,8 +325,9 @@ void TypeChecker::checkTopLevelFunction(FnDef* fn)
 
     bool alwaysReturns = checkBlock(fn->block_, retType);
 
-    env_.popScope();
+    env_.popScope(); // end of function scope
 
+    // if non-void -> require all paths to return
     if (retType != LatteType::Void() && !alwaysReturns)
         fail("Function '" + name + "' may exit without returning a value", 0);
 }
@@ -335,6 +337,7 @@ void TypeChecker::checkClassBodies(Program* program)
     auto* prog = dynamic_cast<Prog*>(program);
     if (!prog) fail("Unexpected Program node in checkClassBodies", 0);
 
+    // only methods have bodies at class level
     for (TopDef* td : *prog->listtopdef_)
     {
         if (auto* c = dynamic_cast<ClassDef*>(td))
@@ -363,9 +366,9 @@ void TypeChecker::checkMethodBody(const std::string& className, Method* m)
     LatteType retType = dtypeFromAst(m->dtype_);
     currentClass_ = className;
 
-    env_.pushScope();
+    env_.pushScope(); // method local scope
 
-    // params
+    // insert method parameters as locals
     if (m->listarg_)
     {
         for (Arg* a : *m->listarg_)
@@ -386,12 +389,12 @@ void TypeChecker::checkMethodBody(const std::string& className, Method* m)
 
     bool alwaysReturns = checkBlock(m->block_, retType);
 
-    env_.popScope();
+    env_.popScope(); // end method scope
 
     if (retType != LatteType::Void() && !alwaysReturns)
         fail("Method '" + std::string(m->ident_) + "' of class '" + className + "' may exit without returning a value", 0);
 
-    currentClass_.reset();
+    currentClass_.reset(); // leave class context
 }
 
 // ---------------- blocks / stmts ----------------
@@ -401,7 +404,7 @@ bool TypeChecker::checkBlock(Block* block, const LatteType& expectedReturn)
     auto* blk = dynamic_cast<Blk*>(block);
     if (!blk) fail("Unexpected Block node", 0);
 
-    env_.pushScope();
+    env_.pushScope(); // new nested scope for this block
 
     bool alwaysReturns = false;
 
@@ -409,12 +412,12 @@ bool TypeChecker::checkBlock(Block* block, const LatteType& expectedReturn)
     {
         for (Stmt* s : *blk->liststmt_)
         {
-            if (alwaysReturns) break;              // <- KLUCZ
+            if (alwaysReturns) break; // dead code after guaranteed return
             alwaysReturns = checkStmt(s, expectedReturn);
         }
     }
 
-    env_.popScope();
+    env_.popScope(); // end block scope
     return alwaysReturns;
 }
 
@@ -422,11 +425,11 @@ static std::optional<bool> constBool(Expr* e)
 {
     if (!e) return std::nullopt;
 
-    e = stripWrappers(e); // <--- KLUCZ: zdejmij EAtom/EParen
+    e = stripWrappers(e); // handle "(true)" and atom wrappers
 
     if (dynamic_cast<ELitTrue*>(e))  return true;
     if (dynamic_cast<ELitFalse*>(e)) return false;
-    return std::nullopt;
+    return std::nullopt; // unknown at compile time
 }
 
 bool TypeChecker::checkStmt(Stmt* stmt, const LatteType& expectedReturn)
@@ -472,7 +475,7 @@ bool TypeChecker::checkStmt(Stmt* stmt, const LatteType& expectedReturn)
 
     if (auto* s = dynamic_cast<Ass*>(stmt))
     {
-        // BNFC dla: Stmt ::= Expr6 "=" Expr ";"
+        // BNFC: Stmt ::= Expr6 "=" Expr ";"
         Expr* lhs = s->expr_1;
         Expr* rhs = s->expr_2;
     
@@ -526,11 +529,12 @@ bool TypeChecker::checkStmt(Stmt* stmt, const LatteType& expectedReturn)
         LatteType condType = checkExpr(s->expr_);
         if (condType != LatteType::Bool())
             fail("Condition in 'if' must be boolean", 0);
-    
+
+        // constant if: can compute return info more precisely
         if (auto cb = constBool(s->expr_))
         {
-            if (*cb)  return checkStmt(s->stmt_, expectedReturn); // if(true)
-            else { (void)checkStmt(s->stmt_, expectedReturn); return false; } // if(false)
+            if (*cb)  return checkStmt(s->stmt_, expectedReturn); // behaves like body
+            else { (void)checkStmt(s->stmt_, expectedReturn); return false; }
         }
     
         (void)checkStmt(s->stmt_, expectedReturn);
@@ -542,7 +546,8 @@ bool TypeChecker::checkStmt(Stmt* stmt, const LatteType& expectedReturn)
         LatteType condType = checkExpr(s->expr_);
         if (condType != LatteType::Bool())
             fail("Condition in 'if-else' must be boolean", 0);
-    
+
+        // constant if-else: only one branch is reachable
         if (auto cb = constBool(s->expr_))
         {
             if (*cb) { (void)checkStmt(s->stmt_2, expectedReturn); return checkStmt(s->stmt_1, expectedReturn); }
@@ -560,7 +565,7 @@ bool TypeChecker::checkStmt(Stmt* stmt, const LatteType& expectedReturn)
         if (condType != LatteType::Bool())
             fail("Condition in 'while' must be boolean", 0);
     
-        // constant folding: while(true)
+        // constant while(true)
         if (auto cb = constBool(s->expr_))
         {
             if (*cb)
@@ -586,22 +591,24 @@ bool TypeChecker::checkStmt(Stmt* stmt, const LatteType& expectedReturn)
         LatteType iterT = checkExpr(s->expr_);
         LatteType varT  = dtypeFromAst(s->dtype_);
 
-        // expr musi byc tablica
+        // expr must be an array type
         if (iterT.kind != LatteTypeKind::Array || !iterT.elem)
             fail("foreach expects array expression on the right side", 0);
 
+        // foreach variable type must match element type exactly
         if (!(*iterT.elem == varT))
             fail("foreach variable type does not match array element type", 0);
 
-        env_.pushScope();
+        env_.pushScope(); // foreach introduces a new scope for loop variable
+
         std::string varName = s->ident_;
         if (env_.isVarDeclaredInCurrentScope(varName))
             fail("Duplicate foreach variable '" + varName + "' in this scope", 0);
+        
         env_.declareVar(varName, VarInfo{ varT });
-
         (void)checkStmt(s->stmt_, expectedReturn);
-
         env_.popScope();
+
         return false;
     }
 
@@ -616,9 +623,10 @@ bool TypeChecker::checkStmt(Stmt* stmt, const LatteType& expectedReturn)
 
 int TypeChecker::lineOf(Expr*) const { return 0; }
 int TypeChecker::lineOf(Stmt*) const { return 0; }
+
 bool TypeChecker::isReferenceType(const LatteType& t) const
 {
-    return t.kind == LatteTypeKind::Class || t.kind == LatteTypeKind::Array;
+    return t.kind == LatteTypeKind::Class || t.kind == LatteTypeKind::Array; // heap-like types
 }
 
 // ---------------- expressions ----------------
@@ -628,13 +636,12 @@ LatteType TypeChecker::checkExpr(Expr* expr)
     if (!expr) return LatteType::Unknown();
 
     if (auto* a = dynamic_cast<EAtom*>(expr))
-        return checkExpr(a->expr_);
+        return checkExpr(a->expr_); // unwrap atom
 
-    // (Expr)
     if (auto* p = dynamic_cast<EParen*>(expr))
-        return checkExpr(p->expr_);
+        return checkExpr(p->expr_); // unwrap parentheses
     
-    // int / bool / string literals
+    // int / bool / string
     if (dynamic_cast<ELitInt*>(expr))
         return LatteType::Int();
 
@@ -644,7 +651,7 @@ LatteType TypeChecker::checkExpr(Expr* expr)
     if (dynamic_cast<EString*>(expr))
         return LatteType::String();
 
-    // self
+    // self keyword inside methods
     if (dynamic_cast<ESelf*>(expr))
     {
         if (!currentClass_.has_value())
@@ -652,7 +659,7 @@ LatteType TypeChecker::checkExpr(Expr* expr)
         return LatteType::Class(*currentClass_);
     }
 
-    // variable
+    // variable name
     if (auto* e = dynamic_cast<EVar*>(expr))
     {
         auto t = lookupVarOrFieldType(e->ident_);
@@ -689,9 +696,8 @@ LatteType TypeChecker::checkExpr(Expr* expr)
         return finfo->result;
     }
 
-    // --- Arrays ---
+    // --- arrays ---
 
-    // new BaseType[Expr]
     if (auto* e = dynamic_cast<ENewArr*>(expr))
     {
         LatteType sizeT = checkExpr(e->expr_);
@@ -702,10 +708,9 @@ LatteType TypeChecker::checkExpr(Expr* expr)
         if (elemT.kind == LatteTypeKind::Void)
             fail("void[] is not allowed", 0);
 
-        return LatteType::Array(elemT);
+        return LatteType::Array(elemT); // new T[n] -> T[]
     }
 
-    // Expr6[Expr]
     if (auto* e = dynamic_cast<EIndex*>(expr))
     {
         LatteType arrT = checkExpr(e->expr_1);
@@ -722,7 +727,6 @@ LatteType TypeChecker::checkExpr(Expr* expr)
 
     // --- Objects / Structs ---
 
-    // new Ident
     if (auto* e = dynamic_cast<ENewObj*>(expr))
     {
         std::string cname = e->ident_;
@@ -738,7 +742,7 @@ LatteType TypeChecker::checkExpr(Expr* expr)
         LatteType baseT = checkExpr(e->expr_);
         std::string field = e->ident_;
     
-        // array.length
+        // special array field: .length
         if (baseT.kind == LatteTypeKind::Array)
         {
             if (field == "length")
@@ -757,7 +761,6 @@ LatteType TypeChecker::checkExpr(Expr* expr)
         return fi->type;
     }    
 
-    // Expr6 . Ident ( [Expr] )  (method call)
     if (auto* e = dynamic_cast<EMethod*>(expr))
     {
         LatteType objT = checkExpr(e->expr_);
@@ -789,24 +792,19 @@ LatteType TypeChecker::checkExpr(Expr* expr)
         return mi->sig.result;
     }
 
-    // --- Casts ( (Type) Expr6 ) ---
-    // W Twojej gramatyce jest ECast, więc minimalnie obsłuż:
-    // - cast do typu referencyjnego z null
-    // - cast w dół/górę w hierarchii klas (jeśli chcesz dopuścić)
-    // Jeśli nie chcesz wspierać castów teraz, lepiej dać czytelny błąd,
-    // ale testy extensions mogą to wykorzystywać.
+    // "(T)null" node from grammar
     if (auto* e = dynamic_cast<ENullCast*>(expr))
     {
         LatteType target = typeFromAst(e->type_);
     
-        // tu nie ma żadnego inner expr, bo to zawsze jest "(T)null"
+        // null only for reference types
         if (!isReferenceType(target))
             fail("Cannot cast null to non-reference type", lineOf(expr));
     
         return target;
     }    
 
-    // --- Boolean / arithmetic / relational ops ---
+    // --- boolean / arithmetic / relational ops ---
 
     // EOr
     if (auto* e = dynamic_cast<EOr*>(expr))
@@ -907,13 +905,13 @@ LatteType TypeChecker::checkExpr(Expr* expr)
     fail("Unknown expression kind (not handled in typechecker)", 0);
 }
 
-// ---------------- LVal ----------------
+// ---------------- lval ----------------
 
 LatteType TypeChecker::checkLValueExpr(Expr* e)
 {
     if (!e) fail("Invalid l-value", 0);
 
-    // x
+    // x (variable name) is assignable
     if (auto* v = dynamic_cast<EVar*>(e))
     {
         auto t = lookupVarOrFieldType(v->ident_);
@@ -922,7 +920,7 @@ LatteType TypeChecker::checkLValueExpr(Expr* e)
         return *t;
     }
 
-    // a[i]
+    // a[i] (array element) is assignable
     if (auto* idx = dynamic_cast<EIndex*>(e))
     {
         LatteType arrT = checkExpr(idx->expr_1);
@@ -961,11 +959,11 @@ LatteType TypeChecker::checkLValueExpr(Expr* e)
         return fi->type;
     }
 
-    // self nie jest l-value
+    // self is not assignable
     if (dynamic_cast<ESelf*>(e))
         fail("'self' is not assignable", 0);
 
-    // reszta: nie jest l-value (np. method call, new, arytmetyka, cast...)
+    // everything else is not an l-value
     fail("Left side of assignment must be a variable, field, or array element", 0);
 }
 
@@ -983,7 +981,7 @@ LatteType TypeChecker::typeFromAst(Type* ty)
 
     if (auto* t = dynamic_cast<TArr*>(ty))
     {
-        LatteType inner = typeFromAst(t->basetype_);   // <-- zamiast basetype_
+        LatteType inner = typeFromAst(t->basetype_);
         if (inner.kind == LatteTypeKind::Void)
             fail("void[] is not allowed", 0);
 
@@ -1006,7 +1004,7 @@ LatteType TypeChecker::typeFromAst(BaseType* t)
         return LatteType::Class(c->ident_);
 
     fail("Unknown BaseType in typeFromAst(BaseType*)", 0);
-    return LatteType::Void(); // żeby uciszyć kompilator
+    return LatteType::Void(); // unreachable, only to silence compiler
 }
 
 LatteType TypeChecker::baseTypeFromAst(BaseType* bt)
@@ -1037,25 +1035,25 @@ bool TypeChecker::isSubClassOf(const std::string& sub, const std::string& base) 
     auto cur = env_.lookupClass(sub);
     while (cur.has_value() && cur->base.has_value())
     {
-        if (*cur->base == base) return true;
-        cur = env_.lookupClass(*cur->base);
+        if (*cur->base == base) return true; // found base in chain
+        cur = env_.lookupClass(*cur->base);  // walk up inheritance
     }
     return false;
 }
 
 bool TypeChecker::isAssignable(const LatteType& dst, const LatteType& src) const
 {
-    if (dst == src) return true;
+    if (dst == src) return true; // exact match
 
-    // null -> dowolny ref
+    // null -> any referency type
     if (src.kind == LatteTypeKind::Null && dst.isRef())
         return true;
 
-    // klasy: src może być podtypem dst
+    // allow subclass instance assigned to base type variable
     if (dst.kind == LatteTypeKind::Class && src.kind == LatteTypeKind::Class)
         return isSubClassOf(src.name, dst.name);
 
-    // tablice: na razie tylko dokładnie taki sam typ
+    // arrays: only invariant (exact match)
     if (dst.kind == LatteTypeKind::Array && src.kind == LatteTypeKind::Array)
         return dst == src;
 
@@ -1066,13 +1064,16 @@ bool TypeChecker::isAssignable(const LatteType& dst, const LatteType& src) const
 
 std::optional<LatteType> TypeChecker::lookupVarOrFieldType(const std::string& name) const
 {
+    // prefer local variable
     if (auto vi = env_.lookupVar(name))
         return vi->type;
 
-    if (currentClass_) {
-        auto fi = env_.lookupField(*currentClass_, name); // idzie po bazach
+    // inside method, allow implicit "self.field" lookup
+    if (currentClass_)
+    {
+        auto fi = env_.lookupField(*currentClass_, name); // includes bases
         if (fi) return fi->type;
     }
 
-    return std::nullopt;
+    return std::nullopt; // name not found
 }
