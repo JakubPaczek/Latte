@@ -130,6 +130,7 @@ extern int yylex(YYSTYPE *lvalp, YYLTYPE *llocp, yyscan_t scanner);
 %token          _LBRACE      /* { */
 %token          _DBAR        /* || */
 %token          _RBRACE      /* } */
+%token<_string> T_CIdent     /* CIdent */
 %token<_string> _STRING_
 %token<_int>    _INTEGER_
 %token<_string> _IDENT_
@@ -169,8 +170,8 @@ extern int yylex(YYSTYPE *lvalp, YYLTYPE *llocp, yyscan_t scanner);
 Program : ListTopDef { std::reverse($1->begin(),$1->end()) ;$$ = new Prog($1); result->program_ = $$; }
 ;
 TopDef : Type _IDENT_ _LPAREN ListArg _RPAREN Block { std::reverse($4->begin(),$4->end()) ;$$ = new FnDef($1, $2, $4, $6); }
-  | _KW_class _IDENT_ _LBRACE ListMember _RBRACE { $$ = new ClassDef($2, $4); }
-  | _KW_class _IDENT_ _KW_extends _IDENT_ _LBRACE ListMember _RBRACE { $$ = new ClassExt($2, $4, $6); }
+  | _KW_class T_CIdent _LBRACE ListMember _RBRACE { $$ = new ClassDef($2, $4); }
+  | _KW_class T_CIdent _KW_extends T_CIdent _LBRACE ListMember _RBRACE { $$ = new ClassExt($2, $4, $6); }
 ;
 ListTopDef : TopDef { $$ = new ListTopDef(); $$->push_back($1); }
   | TopDef ListTopDef { $2->push_back($1); $$ = $2; }
@@ -219,7 +220,7 @@ Type : BaseType { $$ = new TBase($1); }
 BaseType : _KW_int { $$ = new Int(); }
   | _KW_string { $$ = new Str(); }
   | _KW_boolean { $$ = new Bool(); }
-  | _IDENT_ { $$ = new ClassT($1); }
+  | T_CIdent { $$ = new ClassT($1); }
 ;
 ListType : /* empty */ { $$ = new ListType(); }
   | Type { $$ = new ListType(); $$->push_back($1); }
@@ -230,7 +231,7 @@ Expr7 : _LPAREN Expr _RPAREN { $$ = new EParen($2); }
   | _KW_null { $$ = new ENull(); }
   | _LPAREN Type _RPAREN Expr6 { $$ = new ECast($2, $4); }
   | _KW_new BaseType _LBRACK Expr _RBRACK { $$ = new ENewArr($2, $4); }
-  | _KW_new _IDENT_ { $$ = new ENewObj($2); }
+  | _KW_new T_CIdent { $$ = new ENewObj($2); }
   | _IDENT_ { $$ = new EVar($1); }
   | _INTEGER_ { $$ = new ELitInt($1); }
   | _KW_true { $$ = new ELitTrue(); }

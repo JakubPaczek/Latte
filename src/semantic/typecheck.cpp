@@ -91,7 +91,7 @@ void TypeChecker::collectClassHeaders(Program* program)
         if (auto* c = dynamic_cast<ClassDef*>(td))
         {
             ClassInfo ci;
-            ci.name = c->cident_;
+            ci.name = c->ident_;
             ci.base = std::nullopt;
 
             if (!env_.tryEnterClass(ci))
@@ -100,8 +100,8 @@ void TypeChecker::collectClassHeaders(Program* program)
         else if (auto* ce = dynamic_cast<ClassExt*>(td))
         {
             ClassInfo ci;
-            ci.name = ce->cident_1;      // class X extends Y
-            ci.base = ce->cident_2;
+            ci.name = ce->ident_1;      // class X extends Y
+            ci.base = ce->ident_2;
 
             if (!env_.tryEnterClass(ci))
                 fail("Duplicate definition of class '" + ci.name + "'", 0);
@@ -113,9 +113,9 @@ void TypeChecker::collectClassHeaders(Program* program)
     {
         if (auto* ce = dynamic_cast<ClassExt*>(td))
         {
-            auto baseName = ce->cident_2;
+            auto baseName = ce->ident_2;
             if (!env_.lookupClass(baseName).has_value())
-                fail("Class '" + std::string(ce->cident_1) + "' extends unknown class '" + baseName + "'", 0);
+                fail("Class '" + std::string(ce->ident_1) + "' extends unknown class '" + baseName + "'", 0);
         }
     }
 }
@@ -158,7 +158,7 @@ void TypeChecker::collectSignatures(Program* program)
     {
         if (auto* c = dynamic_cast<ClassDef*>(td))
         {
-            auto& ci = env_.getClassRef(c->cident_);
+            auto& ci = env_.getClassRef(c->ident_);
 
             int fieldIdx = 0;
             int methodIdx = 0;
@@ -210,8 +210,8 @@ void TypeChecker::collectSignatures(Program* program)
         }
         else if (auto* ce = dynamic_cast<ClassExt*>(td))
         {
-            auto& ci = env_.getClassRef(ce->cident_1);
-            ci.base = ce->cident_2;
+            auto& ci = env_.getClassRef(ce->ident_1);
+            ci.base = ce->ident_2;
 
             int fieldIdx  = ci.base ? env_.countAllFields(*ci.base)  : 0;
             int methodIdx = ci.base ? env_.countAllMethods(*ci.base) : 0;            
@@ -309,7 +309,7 @@ void TypeChecker::checkClassBodies(Program* program)
     {
         if (auto* c = dynamic_cast<ClassDef*>(td))
         {
-            std::string cname = c->cident_;
+            std::string cname = c->ident_;
             for (Member* m : *c->listmember_)
             {
                 if (auto* mm = dynamic_cast<Method*>(m))
@@ -318,7 +318,7 @@ void TypeChecker::checkClassBodies(Program* program)
         }
         else if (auto* ce = dynamic_cast<ClassExt*>(td))
         {
-            std::string cname = ce->cident_1;
+            std::string cname = ce->ident_1;
             for (Member* m : *ce->listmember_)
             {
                 if (auto* mm = dynamic_cast<Method*>(m))
@@ -662,7 +662,7 @@ LatteType TypeChecker::checkExpr(Expr* expr)
     // new Ident
     if (auto* e = dynamic_cast<ENewObj*>(expr))
     {
-        std::string cname = e->cident_;
+        std::string cname = e->ident_;
         if (!env_.lookupClass(cname).has_value())
             fail("Unknown class type '" + cname + "'", 0);
 
@@ -963,7 +963,7 @@ LatteType TypeChecker::baseTypeFromAst(BaseType* bt)
 
     if (auto* c = dynamic_cast<ClassT*>(bt))
     {
-        std::string cname = c->cident_;
+        std::string cname = c->ident_;
         if (!env_.lookupClass(cname).has_value())
             fail("Unknown class type '" + cname + "'", 0);
         return LatteType::Class(cname);

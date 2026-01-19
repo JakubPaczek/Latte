@@ -17,7 +17,6 @@ typedef std::string String;
 typedef std::string Ident;
 
 
-typedef std::string CIdent;
 
 
 /********************   Forward Declarations    ********************/
@@ -29,6 +28,7 @@ class Member;
 class Block;
 class Stmt;
 class Item;
+class DType;
 class Type;
 class BaseType;
 class Expr;
@@ -58,6 +58,8 @@ class CondElse;
 class While;
 class SExp;
 class ForEach;
+class DTypeBase;
+class DTypeArr;
 class TBase;
 class TArr;
 class Int;
@@ -120,6 +122,7 @@ public:
   virtual void visitBlock(Block *p) = 0;
   virtual void visitStmt(Stmt *p) = 0;
   virtual void visitItem(Item *p) = 0;
+  virtual void visitDType(DType *p) = 0;
   virtual void visitType(Type *p) = 0;
   virtual void visitBaseType(BaseType *p) = 0;
   virtual void visitExpr(Expr *p) = 0;
@@ -149,6 +152,8 @@ public:
   virtual void visitWhile(While *p) = 0;
   virtual void visitSExp(SExp *p) = 0;
   virtual void visitForEach(ForEach *p) = 0;
+  virtual void visitDTypeBase(DTypeBase *p) = 0;
+  virtual void visitDTypeArr(DTypeArr *p) = 0;
   virtual void visitTBase(TBase *p) = 0;
   virtual void visitTArr(TArr *p) = 0;
   virtual void visitInt(Int *p) = 0;
@@ -204,7 +209,6 @@ public:
   virtual void visitDouble(Double x) = 0;
   virtual void visitString(String x) = 0;
   virtual void visitIdent(Ident x) = 0;
-  virtual void visitCIdent(CIdent x) = 0;
 
 };
 
@@ -265,6 +269,13 @@ class Item : public Visitable
 {
 public:
   virtual Item *clone() const = 0;
+
+};
+
+class DType : public Visitable
+{
+public:
+  virtual DType *clone() const = 0;
 
 };
 
@@ -329,14 +340,14 @@ public:
 class FnDef : public TopDef
 {
 public:
-  Type *type_;
+  DType *dtype_;
   Ident ident_;
   ListArg *listarg_;
   Block *block_;
 
   FnDef(const FnDef &);
   FnDef &operator=(const FnDef &);
-  FnDef(Type *p1, Ident p2, ListArg *p3, Block *p4);
+  FnDef(DType *p1, Ident p2, ListArg *p3, Block *p4);
   ~FnDef();
   virtual void accept(Visitor *v);
   virtual FnDef *clone() const;
@@ -346,12 +357,12 @@ public:
 class ClassDef : public TopDef
 {
 public:
-  CIdent cident_;
+  Ident ident_;
   ListMember *listmember_;
 
   ClassDef(const ClassDef &);
   ClassDef &operator=(const ClassDef &);
-  ClassDef(CIdent p1, ListMember *p2);
+  ClassDef(Ident p1, ListMember *p2);
   ~ClassDef();
   virtual void accept(Visitor *v);
   virtual ClassDef *clone() const;
@@ -361,13 +372,13 @@ public:
 class ClassExt : public TopDef
 {
 public:
-  CIdent cident_1;
-  CIdent cident_2;
+  Ident ident_1;
+  Ident ident_2;
   ListMember *listmember_;
 
   ClassExt(const ClassExt &);
   ClassExt &operator=(const ClassExt &);
-  ClassExt(CIdent p1, CIdent p2, ListMember *p3);
+  ClassExt(Ident p1, Ident p2, ListMember *p3);
   ~ClassExt();
   virtual void accept(Visitor *v);
   virtual ClassExt *clone() const;
@@ -377,12 +388,12 @@ public:
 class Ar : public Arg
 {
 public:
-  Type *type_;
+  DType *dtype_;
   Ident ident_;
 
   Ar(const Ar &);
   Ar &operator=(const Ar &);
-  Ar(Type *p1, Ident p2);
+  Ar(DType *p1, Ident p2);
   ~Ar();
   virtual void accept(Visitor *v);
   virtual Ar *clone() const;
@@ -392,12 +403,12 @@ public:
 class Field : public Member
 {
 public:
-  Type *type_;
+  DType *dtype_;
   Ident ident_;
 
   Field(const Field &);
   Field &operator=(const Field &);
-  Field(Type *p1, Ident p2);
+  Field(DType *p1, Ident p2);
   ~Field();
   virtual void accept(Visitor *v);
   virtual Field *clone() const;
@@ -407,14 +418,14 @@ public:
 class Method : public Member
 {
 public:
-  Type *type_;
+  DType *dtype_;
   Ident ident_;
   ListArg *listarg_;
   Block *block_;
 
   Method(const Method &);
   Method &operator=(const Method &);
-  Method(Type *p1, Ident p2, ListArg *p3, Block *p4);
+  Method(DType *p1, Ident p2, ListArg *p3, Block *p4);
   ~Method();
   virtual void accept(Visitor *v);
   virtual Method *clone() const;
@@ -465,12 +476,12 @@ public:
 class Decl : public Stmt
 {
 public:
-  Type *type_;
+  DType *dtype_;
   ListItem *listitem_;
 
   Decl(const Decl &);
   Decl &operator=(const Decl &);
-  Decl(Type *p1, ListItem *p2);
+  Decl(DType *p1, ListItem *p2);
   ~Decl();
   virtual void accept(Visitor *v);
   virtual Decl *clone() const;
@@ -653,6 +664,34 @@ public:
   void swap(Init &);
 };
 
+class DTypeBase : public DType
+{
+public:
+  BaseType *basetype_;
+
+  DTypeBase(const DTypeBase &);
+  DTypeBase &operator=(const DTypeBase &);
+  DTypeBase(BaseType *p1);
+  ~DTypeBase();
+  virtual void accept(Visitor *v);
+  virtual DTypeBase *clone() const;
+  void swap(DTypeBase &);
+};
+
+class DTypeArr : public DType
+{
+public:
+  BaseType *basetype_;
+
+  DTypeArr(const DTypeArr &);
+  DTypeArr &operator=(const DTypeArr &);
+  DTypeArr(BaseType *p1);
+  ~DTypeArr();
+  virtual void accept(Visitor *v);
+  virtual DTypeArr *clone() const;
+  void swap(DTypeArr &);
+};
+
 class TBase : public Type
 {
 public:
@@ -751,11 +790,11 @@ public:
 class ClassT : public BaseType
 {
 public:
-  CIdent cident_;
+  Ident ident_;
 
   ClassT(const ClassT &);
   ClassT &operator=(const ClassT &);
-  ClassT(CIdent p1);
+  ClassT(Ident p1);
   ~ClassT();
   virtual void accept(Visitor *v);
   virtual ClassT *clone() const;
@@ -835,11 +874,11 @@ public:
 class ENewObj : public Expr
 {
 public:
-  CIdent cident_;
+  Ident ident_;
 
   ENewObj(const ENewObj &);
   ENewObj &operator=(const ENewObj &);
-  ENewObj(CIdent p1);
+  ENewObj(Ident p1);
   ~ENewObj();
   virtual void accept(Visitor *v);
   virtual ENewObj *clone() const;

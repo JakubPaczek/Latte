@@ -4,27 +4,27 @@ entrypoints Program ; -- start symbol
 
 Prog.       Program ::= [TopDef] ;
 
-FnDef.      TopDef ::= Type Ident "(" [Arg] ")" Block ;
+FnDef.      TopDef ::= DType Ident "(" [Arg] ")" Block ;
 
 separator   nonempty TopDef "" ;
 
-Ar.         Arg ::= Type Ident;
+Ar.         Arg ::= DType Ident ;
 
 separator   Arg "," ;
 
 -- top-level class definitions (structs + objects)
 
-ClassDef.   TopDef ::= "class" CIdent "{" [Member] "}" ;
+ClassDef.   TopDef ::= "class" Ident "{" [Member] "}" ;
 
-ClassExt.   TopDef ::= "class" CIdent "extends" CIdent "{" [Member] "}" ;
+ClassExt.   TopDef ::= "class" Ident "extends" Ident "{" [Member] "}" ;
 
 separator   Member "" ;
 
 -- members inside class
 
-Field.  Member ::= Type Ident ";" ;
+Field.  Member ::= DType Ident ";" ;
 
-Method. Member ::= Type Ident "(" [Arg] ")" Block ;
+Method. Member ::= DType Ident "(" [Arg] ")" Block ;
 
 -- statements
 
@@ -36,7 +36,7 @@ Empty.      Stmt ::= ";" ;
 
 BStmt.      Stmt ::= Block ;
 
-Decl.       Stmt ::= Type [Item] ";" ;
+Decl.  Stmt   ::= DType [Item] ";" ;
 
 NoInit.     Item ::= Ident ;
 
@@ -44,11 +44,11 @@ Init.       Item ::= Ident "=" Expr ;
 
 separator   nonempty Item "," ;
 
-Ass.        Stmt ::= Expr6 "=" Expr ";" ;
+Ass.        Stmt ::= Expr7 "=" Expr ";" ;
 
-Incr.       Stmt ::= Expr6 "++" ";" ;
+Incr.       Stmt ::= Expr7 "++" ";" ;
 
-Decr.       Stmt ::= Expr6 "--" ";" ;
+Decr.       Stmt ::= Expr7 "--" ";" ;
 
 Ret.        Stmt ::= "return" Expr ";" ;
 
@@ -66,6 +66,10 @@ ForEach.    Stmt ::= "for" "(" Type Ident ":" Expr ")" Stmt ;
 
 -- Types
 
+DTypeBase.      DType ::= BaseType ;
+
+DTypeArr.  DType ::= BaseType "[" "]" ;
+
 TBase.          Type ::= BaseType ;
 
 TArr.           Type ::= Type "[" "]" ; -- 1D arrays
@@ -76,7 +80,7 @@ Str.            BaseType ::= "string" ;
 
 Bool.           BaseType ::= "boolean" ;
 
-ClassT.         BaseType ::= CIdent ;
+ClassT.         BaseType ::= Ident ;
 
 Void.           Type ::= "void" ;
 
@@ -92,11 +96,11 @@ ESelf.          Expr7 ::= "self" ;
 
 ENull.          Expr7 ::= "null" ;
 
-ECast.          Expr7 ::= "(" Type ")" Expr6 ;
+ECast.          Expr7 ::= "(" Type ")" Expr7 ;
 
 ENewArr.        Expr7 ::= "new" BaseType "[" Expr "]" ;
 
-ENewObj.        Expr7 ::= "new" CIdent ;
+ENewObj.        Expr7 ::= "new" Ident ;
 
 EVar.           Expr7 ::= Ident ;
 
@@ -116,9 +120,9 @@ EMethod.        Expr7 ::= Expr7 "." Ident "(" [Expr] ")" ;
 
 EField.         Expr7 ::= Expr7 "." Ident ;
 
-Neg.            Expr5 ::= "-" Expr6 ;
+Neg.            Expr5 ::= "-" Expr7 ;
 
-Not.            Expr5 ::= "!" Expr6 ;
+Not.            Expr5 ::= "!" Expr7 ;
 
 EMul.           Expr4 ::= Expr4 MulOp Expr5 ;
 
@@ -165,5 +169,3 @@ comment "#" ;
 comment "//" ;
 
 comment "/*" "*/" ;
-
-token CIdent (upper (letter | digit | '_')*) ;

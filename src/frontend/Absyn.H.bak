@@ -17,6 +17,7 @@ typedef std::string String;
 typedef std::string Ident;
 
 
+typedef std::string CIdent;
 
 
 /********************   Forward Declarations    ********************/
@@ -203,6 +204,7 @@ public:
   virtual void visitDouble(Double x) = 0;
   virtual void visitString(String x) = 0;
   virtual void visitIdent(Ident x) = 0;
+  virtual void visitCIdent(CIdent x) = 0;
 
 };
 
@@ -344,12 +346,12 @@ public:
 class ClassDef : public TopDef
 {
 public:
-  Ident ident_;
+  CIdent cident_;
   ListMember *listmember_;
 
   ClassDef(const ClassDef &);
   ClassDef &operator=(const ClassDef &);
-  ClassDef(Ident p1, ListMember *p2);
+  ClassDef(CIdent p1, ListMember *p2);
   ~ClassDef();
   virtual void accept(Visitor *v);
   virtual ClassDef *clone() const;
@@ -359,13 +361,13 @@ public:
 class ClassExt : public TopDef
 {
 public:
-  Ident ident_1;
-  Ident ident_2;
+  CIdent cident_1;
+  CIdent cident_2;
   ListMember *listmember_;
 
   ClassExt(const ClassExt &);
   ClassExt &operator=(const ClassExt &);
-  ClassExt(Ident p1, Ident p2, ListMember *p3);
+  ClassExt(CIdent p1, CIdent p2, ListMember *p3);
   ~ClassExt();
   virtual void accept(Visitor *v);
   virtual ClassExt *clone() const;
@@ -749,11 +751,11 @@ public:
 class ClassT : public BaseType
 {
 public:
-  Ident ident_;
+  CIdent cident_;
 
   ClassT(const ClassT &);
   ClassT &operator=(const ClassT &);
-  ClassT(Ident p1);
+  ClassT(CIdent p1);
   ~ClassT();
   virtual void accept(Visitor *v);
   virtual ClassT *clone() const;
@@ -833,11 +835,11 @@ public:
 class ENewObj : public Expr
 {
 public:
-  Ident ident_;
+  CIdent cident_;
 
   ENewObj(const ENewObj &);
   ENewObj &operator=(const ENewObj &);
-  ENewObj(Ident p1);
+  ENewObj(CIdent p1);
   ~ENewObj();
   virtual void accept(Visitor *v);
   virtual ENewObj *clone() const;

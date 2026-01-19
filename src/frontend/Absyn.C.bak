@@ -106,16 +106,16 @@ FnDef *FnDef::clone() const
 
 
 /********************   ClassDef    ********************/
-ClassDef::ClassDef(Ident p1, ListMember *p2)
+ClassDef::ClassDef(CIdent p1, ListMember *p2)
 {
-  ident_ = p1;
+  cident_ = p1;
   listmember_ = p2;
 
 }
 
 ClassDef::ClassDef(const ClassDef & other)
 {
-  ident_ = other.ident_;
+  cident_ = other.cident_;
   listmember_ = other.listmember_->clone();
 
 }
@@ -129,7 +129,7 @@ ClassDef &ClassDef::operator=(const ClassDef & other)
 
 void ClassDef::swap(ClassDef & other)
 {
-  std::swap(ident_, other.ident_);
+  std::swap(cident_, other.cident_);
   std::swap(listmember_, other.listmember_);
 
 }
@@ -153,18 +153,18 @@ ClassDef *ClassDef::clone() const
 
 
 /********************   ClassExt    ********************/
-ClassExt::ClassExt(Ident p1, Ident p2, ListMember *p3)
+ClassExt::ClassExt(CIdent p1, CIdent p2, ListMember *p3)
 {
-  ident_1 = p1;
-  ident_2 = p2;
+  cident_1 = p1;
+  cident_2 = p2;
   listmember_ = p3;
 
 }
 
 ClassExt::ClassExt(const ClassExt & other)
 {
-  ident_1 = other.ident_1;
-  ident_2 = other.ident_2;
+  cident_1 = other.cident_1;
+  cident_2 = other.cident_2;
   listmember_ = other.listmember_->clone();
 
 }
@@ -178,8 +178,8 @@ ClassExt &ClassExt::operator=(const ClassExt & other)
 
 void ClassExt::swap(ClassExt & other)
 {
-  std::swap(ident_1, other.ident_1);
-  std::swap(ident_2, other.ident_2);
+  std::swap(cident_1, other.cident_1);
+  std::swap(cident_2, other.cident_2);
   std::swap(listmember_, other.listmember_);
 
 }
@@ -1381,15 +1381,15 @@ Bool *Bool::clone() const
 
 
 /********************   ClassT    ********************/
-ClassT::ClassT(Ident p1)
+ClassT::ClassT(CIdent p1)
 {
-  ident_ = p1;
+  cident_ = p1;
 
 }
 
 ClassT::ClassT(const ClassT & other)
 {
-  ident_ = other.ident_;
+  cident_ = other.cident_;
 
 }
 
@@ -1402,7 +1402,7 @@ ClassT &ClassT::operator=(const ClassT & other)
 
 void ClassT::swap(ClassT & other)
 {
-  std::swap(ident_, other.ident_);
+  std::swap(cident_, other.cident_);
 
 }
 
@@ -1644,15 +1644,15 @@ ENewArr *ENewArr::clone() const
 
 
 /********************   ENewObj    ********************/
-ENewObj::ENewObj(Ident p1)
+ENewObj::ENewObj(CIdent p1)
 {
-  ident_ = p1;
+  cident_ = p1;
 
 }
 
 ENewObj::ENewObj(const ENewObj & other)
 {
-  ident_ = other.ident_;
+  cident_ = other.cident_;
 
 }
 
@@ -1665,7 +1665,7 @@ ENewObj &ENewObj::operator=(const ENewObj & other)
 
 void ENewObj::swap(ENewObj & other)
 {
-  std::swap(ident_, other.ident_);
+  std::swap(cident_, other.cident_);
 
 }
 

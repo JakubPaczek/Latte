@@ -75,6 +75,9 @@ class PrintAbsyn : public Visitor
   void visitInit(Init *p);
   void visitListItem(ListItem *p);
   void iterListItem(ListItem::const_iterator i, ListItem::const_iterator j);
+  void visitDType(DType *p); /* abstract class */
+  void visitDTypeBase(DTypeBase *p);
+  void visitDTypeArr(DTypeArr *p);
   void visitType(Type *p); /* abstract class */
   void visitTBase(TBase *p);
   void visitTArr(TArr *p);
@@ -132,7 +135,6 @@ class PrintAbsyn : public Visitor
   void visitChar(Char c);
   void visitString(String s);
   void visitIdent(String s);
-  void visitCIdent(String s);
  protected:
   char *buf_;
   size_t cur_, buf_size;
@@ -261,6 +263,9 @@ class ShowAbsyn : public Visitor
   void visitInit(Init *p);
   void visitListItem(ListItem *p);
   void iterListItem(ListItem::const_iterator i, ListItem::const_iterator j);
+  void visitDType(DType *p); /* abstract class */
+  void visitDTypeBase(DTypeBase *p);
+  void visitDTypeArr(DTypeArr *p);
   void visitType(Type *p); /* abstract class */
   void visitTBase(TBase *p);
   void visitTArr(TArr *p);
@@ -318,7 +323,6 @@ class ShowAbsyn : public Visitor
   void visitChar(Char c);
   void visitString(String s);
   void visitIdent(String s);
-  void visitCIdent(String s);
  protected:
   char *buf_;
   size_t cur_, buf_size;
