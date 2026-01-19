@@ -419,6 +419,10 @@ bool TypeChecker::checkBlock(Block* block, const LatteType& expectedReturn)
 
 static std::optional<bool> constBool(Expr* e)
 {
+    if (!e) return std::nullopt;
+
+    e = stripWrappers(e); // <--- KLUCZ: zdejmij EAtom/EParen
+
     if (dynamic_cast<ELitTrue*>(e))  return true;
     if (dynamic_cast<ELitFalse*>(e)) return false;
     return std::nullopt;
@@ -561,6 +565,7 @@ bool TypeChecker::checkStmt(Stmt* stmt, const LatteType& expectedReturn)
             if (*cb)
             {
                 bool bodyRet = checkStmt(s->stmt_, expectedReturn);
+                (void)bodyRet;
                 return true; // while(true) never falls through (return OR infinite loop)
             }
             else
