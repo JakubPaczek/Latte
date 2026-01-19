@@ -13,13 +13,10 @@
 void Skeleton::visitProgram(Program *t) {} //abstract class
 void Skeleton::visitTopDef(TopDef *t) {} //abstract class
 void Skeleton::visitArg(Arg *t) {} //abstract class
-void Skeleton::visitMember(Member *t) {} //abstract class
 void Skeleton::visitBlock(Block *t) {} //abstract class
 void Skeleton::visitStmt(Stmt *t) {} //abstract class
 void Skeleton::visitItem(Item *t) {} //abstract class
-void Skeleton::visitLVal(LVal *t) {} //abstract class
 void Skeleton::visitType(Type *t) {} //abstract class
-void Skeleton::visitBaseType(BaseType *t) {} //abstract class
 void Skeleton::visitExpr(Expr *t) {} //abstract class
 void Skeleton::visitAddOp(AddOp *t) {} //abstract class
 void Skeleton::visitMulOp(MulOp *t) {} //abstract class
@@ -44,51 +41,12 @@ void Skeleton::visitFnDef(FnDef *fn_def)
 
 }
 
-void Skeleton::visitClassDef(ClassDef *class_def)
-{
-  /* Code For ClassDef Goes Here */
-
-  visitIdent(class_def->ident_);
-  if (class_def->listmember_) class_def->listmember_->accept(this);
-
-}
-
-void Skeleton::visitClassExt(ClassExt *class_ext)
-{
-  /* Code For ClassExt Goes Here */
-
-  visitIdent(class_ext->ident_1);
-  visitIdent(class_ext->ident_2);
-  if (class_ext->listmember_) class_ext->listmember_->accept(this);
-
-}
-
 void Skeleton::visitAr(Ar *ar)
 {
   /* Code For Ar Goes Here */
 
   if (ar->type_) ar->type_->accept(this);
   visitIdent(ar->ident_);
-
-}
-
-void Skeleton::visitField(Field *field)
-{
-  /* Code For Field Goes Here */
-
-  if (field->type_) field->type_->accept(this);
-  visitIdent(field->ident_);
-
-}
-
-void Skeleton::visitMethod(Method *method)
-{
-  /* Code For Method Goes Here */
-
-  if (method->type_) method->type_->accept(this);
-  visitIdent(method->ident_);
-  if (method->listarg_) method->listarg_->accept(this);
-  if (method->block_) method->block_->accept(this);
 
 }
 
@@ -128,7 +86,7 @@ void Skeleton::visitAss(Ass *ass)
 {
   /* Code For Ass Goes Here */
 
-  if (ass->lval_) ass->lval_->accept(this);
+  visitIdent(ass->ident_);
   if (ass->expr_) ass->expr_->accept(this);
 
 }
@@ -137,7 +95,7 @@ void Skeleton::visitIncr(Incr *incr)
 {
   /* Code For Incr Goes Here */
 
-  if (incr->lval_) incr->lval_->accept(this);
+  visitIdent(incr->ident_);
 
 }
 
@@ -145,7 +103,7 @@ void Skeleton::visitDecr(Decr *decr)
 {
   /* Code For Decr Goes Here */
 
-  if (decr->lval_) decr->lval_->accept(this);
+  visitIdent(decr->ident_);
 
 }
 
@@ -200,17 +158,6 @@ void Skeleton::visitSExp(SExp *s_exp)
 
 }
 
-void Skeleton::visitForEach(ForEach *for_each)
-{
-  /* Code For ForEach Goes Here */
-
-  if (for_each->type_) for_each->type_->accept(this);
-  visitIdent(for_each->ident_);
-  if (for_each->expr_) for_each->expr_->accept(this);
-  if (for_each->stmt_) for_each->stmt_->accept(this);
-
-}
-
 void Skeleton::visitNoInit(NoInit *no_init)
 {
   /* Code For NoInit Goes Here */
@@ -225,57 +172,6 @@ void Skeleton::visitInit(Init *init)
 
   visitIdent(init->ident_);
   if (init->expr_) init->expr_->accept(this);
-
-}
-
-void Skeleton::visitLVar(LVar *l_var)
-{
-  /* Code For LVar Goes Here */
-
-  visitIdent(l_var->ident_);
-
-}
-
-void Skeleton::visitLField(LField *l_field)
-{
-  /* Code For LField Goes Here */
-
-  if (l_field->lval_) l_field->lval_->accept(this);
-  visitIdent(l_field->ident_);
-
-}
-
-void Skeleton::visitLIndex(LIndex *l_index)
-{
-  /* Code For LIndex Goes Here */
-
-  if (l_index->lval_) l_index->lval_->accept(this);
-  if (l_index->expr_) l_index->expr_->accept(this);
-
-}
-
-void Skeleton::visitTBase(TBase *t_base)
-{
-  /* Code For TBase Goes Here */
-
-  if (t_base->basetype_) t_base->basetype_->accept(this);
-
-}
-
-void Skeleton::visitTArr(TArr *t_arr)
-{
-  /* Code For TArr Goes Here */
-
-  if (t_arr->basetype_) t_arr->basetype_->accept(this);
-
-}
-
-void Skeleton::visitFun(Fun *fun)
-{
-  /* Code For Fun Goes Here */
-
-  if (fun->type_) fun->type_->accept(this);
-  if (fun->listtype_) fun->listtype_->accept(this);
 
 }
 
@@ -307,80 +203,12 @@ void Skeleton::visitVoid(Void *void_)
 
 }
 
-void Skeleton::visitClassT(ClassT *class_t)
+void Skeleton::visitFun(Fun *fun)
 {
-  /* Code For ClassT Goes Here */
+  /* Code For Fun Goes Here */
 
-  visitIdent(class_t->ident_);
-
-}
-
-void Skeleton::visitEParen(EParen *e_paren)
-{
-  /* Code For EParen Goes Here */
-
-  if (e_paren->expr_) e_paren->expr_->accept(this);
-
-}
-
-void Skeleton::visitENull(ENull *e_null)
-{
-  /* Code For ENull Goes Here */
-
-
-}
-
-void Skeleton::visitECast(ECast *e_cast)
-{
-  /* Code For ECast Goes Here */
-
-  if (e_cast->type_) e_cast->type_->accept(this);
-  if (e_cast->expr_) e_cast->expr_->accept(this);
-
-}
-
-void Skeleton::visitEIndex(EIndex *e_index)
-{
-  /* Code For EIndex Goes Here */
-
-  if (e_index->expr_1) e_index->expr_1->accept(this);
-  if (e_index->expr_2) e_index->expr_2->accept(this);
-
-}
-
-void Skeleton::visitENewArr(ENewArr *e_new_arr)
-{
-  /* Code For ENewArr Goes Here */
-
-  if (e_new_arr->basetype_) e_new_arr->basetype_->accept(this);
-  if (e_new_arr->expr_) e_new_arr->expr_->accept(this);
-
-}
-
-void Skeleton::visitENewObj(ENewObj *e_new_obj)
-{
-  /* Code For ENewObj Goes Here */
-
-  visitIdent(e_new_obj->ident_);
-
-}
-
-void Skeleton::visitEField(EField *e_field)
-{
-  /* Code For EField Goes Here */
-
-  if (e_field->expr_) e_field->expr_->accept(this);
-  visitIdent(e_field->ident_);
-
-}
-
-void Skeleton::visitEMethod(EMethod *e_method)
-{
-  /* Code For EMethod Goes Here */
-
-  if (e_method->expr_) e_method->expr_->accept(this);
-  visitIdent(e_method->ident_);
-  if (e_method->listexpr_) e_method->listexpr_->accept(this);
+  if (fun->type_) fun->type_->accept(this);
+  if (fun->listtype_) fun->listtype_->accept(this);
 
 }
 
@@ -584,14 +412,6 @@ void Skeleton::visitListTopDef(ListTopDef *list_top_def)
 void Skeleton::visitListArg(ListArg *list_arg)
 {
   for (ListArg::iterator i = list_arg->begin() ; i != list_arg->end() ; ++i)
-  {
-    (*i)->accept(this);
-  }
-}
-
-void Skeleton::visitListMember(ListMember *list_member)
-{
-  for (ListMember::iterator i = list_member->begin() ; i != list_member->end() ; ++i)
   {
     (*i)->accept(this);
   }

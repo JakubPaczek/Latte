@@ -57,16 +57,12 @@ extern yyscan_t latte_cpp__initialize_lexer(FILE * inp);
   ListTopDef* listtopdef_;
   Arg* arg_;
   ListArg* listarg_;
-  ListMember* listmember_;
-  Member* member_;
   Block* block_;
   ListStmt* liststmt_;
   Stmt* stmt_;
   Item* item_;
   ListItem* listitem_;
-  LVal* lval_;
   Type* type_;
-  BaseType* basetype_;
   ListType* listtype_;
   Expr* expr_;
   ListExpr* listexpr_;
@@ -100,9 +96,7 @@ extern int yylex(YYSTYPE *lvalp, YYLTYPE *llocp, yyscan_t scanner);
 %token          _COMMA       /* , */
 %token          _MINUS       /* - */
 %token          _DMINUS      /* -- */
-%token          _DOT         /* . */
 %token          _SLASH       /* / */
-%token          _COLON       /* : */
 %token          _SEMI        /* ; */
 %token          _LT          /* < */
 %token          _LDARROW     /* <= */
@@ -110,18 +104,11 @@ extern int yylex(YYSTYPE *lvalp, YYLTYPE *llocp, yyscan_t scanner);
 %token          _DEQ         /* == */
 %token          _GT          /* > */
 %token          _GTEQ        /* >= */
-%token          _LBRACK      /* [ */
-%token          _RBRACK      /* ] */
 %token          _KW_boolean  /* boolean */
-%token          _KW_class    /* class */
 %token          _KW_else     /* else */
-%token          _KW_extends  /* extends */
 %token          _KW_false    /* false */
-%token          _KW_for      /* for */
 %token          _KW_if       /* if */
 %token          _KW_int      /* int */
-%token          _KW_new      /* new */
-%token          _KW_null     /* null */
 %token          _KW_return   /* return */
 %token          _KW_string   /* string */
 %token          _KW_true     /* true */
@@ -139,16 +126,12 @@ extern int yylex(YYSTYPE *lvalp, YYLTYPE *llocp, yyscan_t scanner);
 %type <listtopdef_> ListTopDef
 %type <arg_> Arg
 %type <listarg_> ListArg
-%type <listmember_> ListMember
-%type <member_> Member
 %type <block_> Block
 %type <liststmt_> ListStmt
 %type <stmt_> Stmt
 %type <item_> Item
 %type <listitem_> ListItem
-%type <lval_> LVal
 %type <type_> Type
-%type <basetype_> BaseType
 %type <listtype_> ListType
 %type <expr_> Expr6
 %type <expr_> Expr5
@@ -169,8 +152,6 @@ extern int yylex(YYSTYPE *lvalp, YYLTYPE *llocp, yyscan_t scanner);
 Program : ListTopDef { std::reverse($1->begin(),$1->end()) ;$$ = new Prog($1); result->program_ = $$; }
 ;
 TopDef : Type _IDENT_ _LPAREN ListArg _RPAREN Block { std::reverse($4->begin(),$4->end()) ;$$ = new FnDef($1, $2, $4, $6); }
-  | _KW_class _IDENT_ _LBRACE ListMember _RBRACE { $$ = new ClassDef($2, $4); }
-  | _KW_class _IDENT_ _KW_extends _IDENT_ _LBRACE ListMember _RBRACE { $$ = new ClassExt($2, $4, $6); }
 ;
 ListTopDef : TopDef { $$ = new ListTopDef(); $$->push_back($1); }
   | TopDef ListTopDef { $2->push_back($1); $$ = $2; }
@@ -181,12 +162,6 @@ ListArg : /* empty */ { $$ = new ListArg(); }
   | Arg { $$ = new ListArg(); $$->push_back($1); }
   | Arg _COMMA ListArg { $3->push_back($1); $$ = $3; }
 ;
-ListMember : /* empty */ { $$ = new ListMember(); }
-  | ListMember Member { $1->push_back($2); $$ = $1; }
-;
-Member : Type _IDENT_ _SEMI { $$ = new Field($1, $2); }
-  | Type _IDENT_ _LPAREN ListArg _RPAREN Block { std::reverse($4->begin(),$4->end()) ;$$ = new Method($1, $2, $4, $6); }
-;
 Block : _LBRACE ListStmt _RBRACE { $$ = new Blk($2); }
 ;
 ListStmt : /* empty */ { $$ = new ListStmt(); }
@@ -195,16 +170,15 @@ ListStmt : /* empty */ { $$ = new ListStmt(); }
 Stmt : _SEMI { $$ = new Empty(); }
   | Block { $$ = new BStmt($1); }
   | Type ListItem _SEMI { std::reverse($2->begin(),$2->end()) ;$$ = new Decl($1, $2); }
-  | LVal _EQ Expr _SEMI { $$ = new Ass($1, $3); }
-  | LVal _DPLUS _SEMI { $$ = new Incr($1); }
-  | LVal _DMINUS _SEMI { $$ = new Decr($1); }
+  | _IDENT_ _EQ Expr _SEMI { $$ = new Ass($1, $3); }
+  | _IDENT_ _DPLUS _SEMI { $$ = new Incr($1); }
+  | _IDENT_ _DMINUS _SEMI { $$ = new Decr($1); }
   | _KW_return Expr _SEMI { $$ = new Ret($2); }
   | _KW_return _SEMI { $$ = new VRet(); }
   | _KW_if _LPAREN Expr _RPAREN Stmt { $$ = new Cond($3, $5); }
   | _KW_if _LPAREN Expr _RPAREN Stmt _KW_else Stmt { $$ = new CondElse($3, $5, $7); }
   | _KW_while _LPAREN Expr _RPAREN Stmt { $$ = new While($3, $5); }
   | Expr _SEMI { $$ = new SExp($1); }
-  | _KW_for _LPAREN Type _IDENT_ _COLON Expr _RPAREN Stmt { $$ = new ForEach($3, $4, $6, $8); }
 ;
 Item : _IDENT_ { $$ = new NoInit($1); }
   | _IDENT_ _EQ Expr { $$ = new Init($1, $3); }
@@ -212,32 +186,16 @@ Item : _IDENT_ { $$ = new NoInit($1); }
 ListItem : Item { $$ = new ListItem(); $$->push_back($1); }
   | Item _COMMA ListItem { $3->push_back($1); $$ = $3; }
 ;
-LVal : _IDENT_ { $$ = new LVar($1); }
-  | LVal _DOT _IDENT_ { $$ = new LField($1, $3); }
-  | LVal _LBRACK Expr _RBRACK { $$ = new LIndex($1, $3); }
-;
-Type : BaseType { $$ = new TBase($1); }
-  | BaseType _LBRACK _RBRACK { $$ = new TArr($1); }
-;
-BaseType : _KW_int { $$ = new Int(); }
+Type : _KW_int { $$ = new Int(); }
   | _KW_string { $$ = new Str(); }
   | _KW_boolean { $$ = new Bool(); }
   | _KW_void { $$ = new Void(); }
-  | _IDENT_ { $$ = new ClassT($1); }
 ;
 ListType : /* empty */ { $$ = new ListType(); }
   | Type { $$ = new ListType(); $$->push_back($1); }
   | Type _COMMA ListType { $3->push_back($1); $$ = $3; }
 ;
-Expr6 : _LPAREN Expr _RPAREN { $$ = new EParen($2); }
-  | _KW_null { $$ = new ENull(); }
-  | _LPAREN Type _RPAREN Expr6 { $$ = new ECast($2, $4); }
-  | Expr6 _LBRACK Expr _RBRACK { $$ = new EIndex($1, $3); }
-  | _KW_new BaseType _LBRACK Expr _RBRACK { $$ = new ENewArr($2, $4); }
-  | _KW_new _IDENT_ { $$ = new ENewObj($2); }
-  | Expr6 _DOT _IDENT_ { $$ = new EField($1, $3); }
-  | Expr6 _DOT _IDENT_ _LPAREN ListExpr _RPAREN { std::reverse($5->begin(),$5->end()) ;$$ = new EMethod($1, $3, $5); }
-  | _IDENT_ { $$ = new EVar($1); }
+Expr6 : _IDENT_ { $$ = new EVar($1); }
   | _INTEGER_ { $$ = new ELitInt($1); }
   | _KW_true { $$ = new ELitTrue(); }
   | _KW_false { $$ = new ELitFalse(); }

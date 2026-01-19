@@ -19,9 +19,7 @@ private:
     std::optional<std::string> currentClass_;
 
     void collectPredefinedFunctions();
-
     void collectClassHeaders(Program* program);
-
     void collectSignatures(Program* program);
 
     void checkTopLevelFunctions(FnDef* fn);
