@@ -761,24 +761,16 @@ LatteType TypeChecker::checkExpr(Expr* expr)
     // - cast w dół/górę w hierarchii klas (jeśli chcesz dopuścić)
     // Jeśli nie chcesz wspierać castów teraz, lepiej dać czytelny błąd,
     // ale testy extensions mogą to wykorzystywać.
-    if (auto* e = dynamic_cast<ENullCast*>(expr)) {
-        LatteType target = typeFromAst(e->type_); // Type
-        LatteType inner  = checkExpr(e->expr_);   // Expr7
+    if (auto* e = dynamic_cast<ENullCast*>(expr))
+    {
+        LatteType target = typeFromAst(e->type_);
     
-        // jeśli chcesz zgodności z testami:
-        // - dopuść tylko (T)null
-        // - tzn inner musi być null-literal
-        if (!dynamic_cast<ENull*>(e->expr_)) {
-            fail("Only (T)null cast is allowed", lineOf(expr));
-        }
-    
-        // target musi być referencyjny: class albo array
-        if (!isReferenceType(target)) {
+        // tu nie ma żadnego inner expr, bo to zawsze jest "(T)null"
+        if (!isReferenceType(target))
             fail("Cannot cast null to non-reference type", lineOf(expr));
-        }
-        return target;
-    }
     
+        return target;
+    }    
 
     // --- Boolean / arithmetic / relational ops ---
 

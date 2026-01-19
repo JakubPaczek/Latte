@@ -862,11 +862,10 @@ class ENullCast : public Expr
 {
 public:
   Type *type_;
-  Expr *expr_;
 
   ENullCast(const ENullCast &);
   ENullCast &operator=(const ENullCast &);
-  ENullCast(Type *p1, Expr *p2);
+  ENullCast(Type *p1);
   ~ENullCast();
   virtual void accept(Visitor *v);
   virtual ENullCast *clone() const;

@@ -597,7 +597,7 @@ void PrintAbsyn::visitTArr(TArr *p)
   int oldi = _i_;
   if (oldi > 0) render(_L_PAREN);
 
-  _i_ = 0; p->type_->accept(this);
+  _i_ = 0; p->basetype_->accept(this);
   render('[');
   render(']');
 
@@ -1569,7 +1569,7 @@ void ShowAbsyn::visitTArr(TArr *p)
   bufAppend("TArr");
   bufAppend(' ');
   bufAppend('[');
-  if (p->type_)  p->type_->accept(this);
+  if (p->basetype_)  p->basetype_->accept(this);
   bufAppend(']');
   bufAppend(' ');
   bufAppend(')');

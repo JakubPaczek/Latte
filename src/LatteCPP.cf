@@ -74,7 +74,7 @@ DTypeArr.       DType ::= BaseType "[" "]" ;
 
 TBase.          Type ::= BaseType ;
 
-TArr.           Type ::= Type "[" "]" ; -- 1D arrays
+TArr.           Type ::= BaseType "[" "]" ; -- 1D arrays
 
 Int.            BaseType ::= "int" ;
 

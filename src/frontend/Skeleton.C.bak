@@ -339,7 +339,6 @@ void Skeleton::visitENullCast(ENullCast *e_null_cast)
   /* Code For ENullCast Goes Here */
 
   if (e_null_cast->type_) e_null_cast->type_->accept(this);
-  if (e_null_cast->expr_) e_null_cast->expr_->accept(this);
 
 }
 

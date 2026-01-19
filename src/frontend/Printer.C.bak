@@ -739,7 +739,7 @@ void PrintAbsyn::visitENullCast(ENullCast *p)
   render('(');
   _i_ = 0; p->type_->accept(this);
   render(')');
-  _i_ = 7; p->expr_->accept(this);
+  render("null");
 
   if (oldi > 7) render(_R_PAREN);
   _i_ = oldi;
@@ -1654,9 +1654,6 @@ void ShowAbsyn::visitENullCast(ENullCast *p)
   if (p->type_)  p->type_->accept(this);
   bufAppend(']');
   bufAppend(' ');
-  bufAppend('[');
-  if (p->expr_)  p->expr_->accept(this);
-  bufAppend(']');
   bufAppend(')');
 }
 void ShowAbsyn::visitENewArr(ENewArr *p)

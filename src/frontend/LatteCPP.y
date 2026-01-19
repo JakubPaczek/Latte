@@ -219,7 +219,7 @@ DType : _KW_void { $$ = new DVoid(); }
   | BaseType _LBRACK _RBRACK { $$ = new DTypeArr($1); }
 ;
 Type : BaseType { $$ = new TBase($1); }
-  | Type _LBRACK _RBRACK { $$ = new TArr($1); }
+  | BaseType _LBRACK _RBRACK { $$ = new TArr($1); }
   | _KW_void { $$ = new Void(); }
 ;
 BaseType : _KW_int { $$ = new Int(); }
