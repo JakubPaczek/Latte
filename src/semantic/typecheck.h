@@ -35,6 +35,8 @@ private:
 
     LatteType checkLValueExpr(Expr* e);
 
+    LatteType dtypeFromAst(DType* ty);
+
     bool isAssignable(const LatteType& dst, const LatteType& src) const;
     bool isSubClassOf(const std::string& sub, const std::string& base) const;
 

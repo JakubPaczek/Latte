@@ -120,6 +120,24 @@ void TypeChecker::collectClassHeaders(Program* program)
     }
 }
 
+LatteType TypeChecker::dtypeFromAst(DType* ty)
+{
+    if (!ty) return LatteType::Unknown();
+
+    if (auto* b = dynamic_cast<DTypeBase*>(ty))
+        return baseTypeFromAst(b->basetype_);
+
+    if (auto* a = dynamic_cast<DTypeArr*>(ty))
+    {
+        LatteType bt = baseTypeFromAst(a->basetype_);
+        if (bt.kind == LatteTypeKind::Void)
+            fail("void[] is not allowed", 0);
+        return LatteType::Array(bt);
+    }
+
+    return LatteType::Unknown();
+}
+
 void TypeChecker::collectSignatures(Program* program)
 {
     auto* prog = dynamic_cast<Prog*>(program);
@@ -131,7 +149,7 @@ void TypeChecker::collectSignatures(Program* program)
         if (auto* fn = dynamic_cast<FnDef*>(td))
         {
             std::string name = fn->ident_;
-            LatteType retType = typeFromAst(fn->type_);
+            LatteType retType = dtypeFromAst(fn->dtype_);
 
             std::vector<LatteType> argTypes;
             if (fn->listarg_)
@@ -140,7 +158,7 @@ void TypeChecker::collectSignatures(Program* program)
                 {
                     auto* ar = dynamic_cast<Ar*>(a);
                     if (!ar) continue;
-                    argTypes.push_back(typeFromAst(ar->type_));
+                    argTypes.push_back(dtypeFromAst(ar->dtype_));
                 }
             }
 
@@ -176,7 +194,7 @@ void TypeChecker::collectSignatures(Program* program)
                         fail("Duplicate field '" + fname + "' in class '" + ci.name + "'", 0);
 
                     FieldInfo fi;
-                    fi.type = typeFromAst(f->type_);
+                    fi.type = dtypeFromAst(f->dtype_);
                     fi.index = fieldIdx++;
                     ci.fields.emplace(fname, fi);
                 }
@@ -189,14 +207,14 @@ void TypeChecker::collectSignatures(Program* program)
                     MethodInfo mi;
                     mi.index = methodIdx++;
 
-                    mi.sig.result = typeFromAst(mm->type_);
+                    mi.sig.result = dtypeFromAst(mm->dtype_);
                     mi.sig.args.clear();
                     if (mm->listarg_)
                     {
                         for (Arg* a : *mm->listarg_)
                         {
                             auto* ar = dynamic_cast<Ar*>(a);
-                            mi.sig.args.push_back(typeFromAst(ar->type_));
+                            mi.sig.args.push_back(dtypeFromAst(ar->dtype_));
                         }
                     }
 
@@ -229,7 +247,7 @@ void TypeChecker::collectSignatures(Program* program)
                         fail("Duplicate field '" + fname + "' in class '" + ci.name + "'", 0);
 
                     FieldInfo fi;
-                    fi.type = typeFromAst(f->type_);
+                    fi.type = dtypeFromAst(f->dtype_);
                     fi.index = fieldIdx++;
                     ci.fields.emplace(fname, fi);
                 }
@@ -242,14 +260,14 @@ void TypeChecker::collectSignatures(Program* program)
                     MethodInfo mi;
                     mi.index = methodIdx++;
 
-                    mi.sig.result = typeFromAst(mm->type_);
+                    mi.sig.result = dtypeFromAst(mm->dtype_);
                     mi.sig.args.clear();
                     if (mm->listarg_)
                     {
                         for (Arg* a : *mm->listarg_)
                         {
                             auto* ar = dynamic_cast<Ar*>(a);
-                            mi.sig.args.push_back(typeFromAst(ar->type_));
+                            mi.sig.args.push_back(dtypeFromAst(ar->dtype_));
                         }
                     }
 
@@ -268,7 +286,7 @@ void TypeChecker::collectSignatures(Program* program)
 void TypeChecker::checkTopLevelFunction(FnDef* fn)
 {
     std::string name = fn->ident_;
-    LatteType retType = typeFromAst(fn->type_);
+    LatteType retType = dtypeFromAst(fn->dtype_);
 
     currentClass_.reset();
 
@@ -283,7 +301,7 @@ void TypeChecker::checkTopLevelFunction(FnDef* fn)
             if (!ar) continue;
 
             std::string argName = ar->ident_;
-            LatteType argType = typeFromAst(ar->type_);
+            LatteType argType = dtypeFromAst(ar->dtype_);
 
             if (env_.isVarDeclaredInCurrentScope(argName))
                 fail("Duplicate parameter '" + argName + "' in function '" + name + "'", 0);
@@ -330,7 +348,7 @@ void TypeChecker::checkClassBodies(Program* program)
 
 void TypeChecker::checkMethodBody(const std::string& className, Method* m)
 {
-    LatteType retType = typeFromAst(m->type_);
+    LatteType retType = dtypeFromAst(m->dtype_);
     currentClass_ = className;
 
     env_.pushScope();
@@ -344,7 +362,7 @@ void TypeChecker::checkMethodBody(const std::string& className, Method* m)
             if (!ar) continue;
 
             std::string argName = ar->ident_;
-            LatteType argType = typeFromAst(ar->type_);
+            LatteType argType = dtypeFromAst(ar->dtype_);
 
             if (env_.isVarDeclaredInCurrentScope(argName))
                 fail("Duplicate parameter '" + argName + "' in method '" + std::string(m->ident_) +
@@ -404,7 +422,7 @@ bool TypeChecker::checkStmt(Stmt* stmt, const LatteType& expectedReturn)
 
     if (auto* s = dynamic_cast<Decl*>(stmt))
     {
-        LatteType t = typeFromAst(s->type_);
+        LatteType t = dtypeFromAst(s->dtype_);
         if (t.kind == LatteTypeKind::Void)
             fail("Cannot declare variable of type void", 0);
 
