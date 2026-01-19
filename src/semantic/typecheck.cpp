@@ -407,6 +407,13 @@ bool TypeChecker::checkBlock(Block* block, const LatteType& expectedReturn)
     return alwaysReturns;
 }
 
+static std::optional<bool> constBool(Expr* e)
+{
+    if (dynamic_cast<ELitTrue*>(e))  return true;
+    if (dynamic_cast<ELitFalse*>(e)) return false;
+    return std::nullopt;
+}
+
 bool TypeChecker::checkStmt(Stmt* stmt, const LatteType& expectedReturn)
 {
     if (dynamic_cast<Empty*>(stmt)) return false;
@@ -498,21 +505,33 @@ bool TypeChecker::checkStmt(Stmt* stmt, const LatteType& expectedReturn)
         LatteType condType = checkExpr(s->expr_);
         if (condType != LatteType::Bool())
             fail("Condition in 'if' must be boolean", 0);
-
+    
+        if (auto cb = constBool(s->expr_))
+        {
+            if (*cb)  return checkStmt(s->stmt_, expectedReturn); // if(true)
+            else { (void)checkStmt(s->stmt_, expectedReturn); return false; } // if(false)
+        }
+    
         (void)checkStmt(s->stmt_, expectedReturn);
         return false;
-    }
+    }    
 
     if (auto* s = dynamic_cast<CondElse*>(stmt))
     {
         LatteType condType = checkExpr(s->expr_);
         if (condType != LatteType::Bool())
             fail("Condition in 'if-else' must be boolean", 0);
-
+    
+        if (auto cb = constBool(s->expr_))
+        {
+            if (*cb) { (void)checkStmt(s->stmt_2, expectedReturn); return checkStmt(s->stmt_1, expectedReturn); }
+            else     { (void)checkStmt(s->stmt_1, expectedReturn); return checkStmt(s->stmt_2, expectedReturn); }
+        }
+    
         bool thenRet = checkStmt(s->stmt_1, expectedReturn);
         bool elseRet = checkStmt(s->stmt_2, expectedReturn);
         return thenRet && elseRet;
-    }
+    }    
 
     if (auto* s = dynamic_cast<While*>(stmt))
     {
