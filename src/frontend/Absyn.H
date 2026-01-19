@@ -78,8 +78,8 @@ class EIndex;
 class ENewArr;
 class ENewObj;
 class ENewObjCall;
-class EField;
 class EMethod;
+class EField;
 class EVar;
 class ELitInt;
 class ELitTrue;
@@ -175,8 +175,8 @@ public:
   virtual void visitENewArr(ENewArr *p) = 0;
   virtual void visitENewObj(ENewObj *p) = 0;
   virtual void visitENewObjCall(ENewObjCall *p) = 0;
-  virtual void visitEField(EField *p) = 0;
   virtual void visitEMethod(EMethod *p) = 0;
+  virtual void visitEField(EField *p) = 0;
   virtual void visitEVar(EVar *p) = 0;
   virtual void visitELitInt(ELitInt *p) = 0;
   virtual void visitELitTrue(ELitTrue *p) = 0;
@@ -949,21 +949,6 @@ public:
   void swap(ENewObjCall &);
 };
 
-class EField : public Expr
-{
-public:
-  Expr *expr_;
-  Ident ident_;
-
-  EField(const EField &);
-  EField &operator=(const EField &);
-  EField(Expr *p1, Ident p2);
-  ~EField();
-  virtual void accept(Visitor *v);
-  virtual EField *clone() const;
-  void swap(EField &);
-};
-
 class EMethod : public Expr
 {
 public:
@@ -978,6 +963,21 @@ public:
   virtual void accept(Visitor *v);
   virtual EMethod *clone() const;
   void swap(EMethod &);
+};
+
+class EField : public Expr
+{
+public:
+  Expr *expr_;
+  Ident ident_;
+
+  EField(const EField &);
+  EField &operator=(const EField &);
+  EField(Expr *p1, Ident p2);
+  ~EField();
+  virtual void accept(Visitor *v);
+  virtual EField *clone() const;
+  void swap(EField &);
 };
 
 class EVar : public Expr

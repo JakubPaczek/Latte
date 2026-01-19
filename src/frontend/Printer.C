@@ -814,19 +814,6 @@ void PrintAbsyn::visitENewObjCall(ENewObjCall *p)
   _i_ = oldi;
 }
 
-void PrintAbsyn::visitEField(EField *p)
-{
-  int oldi = _i_;
-  if (oldi > 6) render(_L_PAREN);
-
-  _i_ = 6; p->expr_->accept(this);
-  render('.');
-  visitIdent(p->ident_);
-
-  if (oldi > 6) render(_R_PAREN);
-  _i_ = oldi;
-}
-
 void PrintAbsyn::visitEMethod(EMethod *p)
 {
   int oldi = _i_;
@@ -838,6 +825,19 @@ void PrintAbsyn::visitEMethod(EMethod *p)
   render('(');
   _i_ = 0; visitListExpr(p->listexpr_);
   render(')');
+
+  if (oldi > 6) render(_R_PAREN);
+  _i_ = oldi;
+}
+
+void PrintAbsyn::visitEField(EField *p)
+{
+  int oldi = _i_;
+  if (oldi > 6) render(_L_PAREN);
+
+  _i_ = 6; p->expr_->accept(this);
+  render('.');
+  visitIdent(p->ident_);
 
   if (oldi > 6) render(_R_PAREN);
   _i_ = oldi;
@@ -1737,18 +1737,6 @@ void ShowAbsyn::visitENewObjCall(ENewObjCall *p)
   bufAppend(' ');
   bufAppend(')');
 }
-void ShowAbsyn::visitEField(EField *p)
-{
-  bufAppend('(');
-  bufAppend("EField");
-  bufAppend(' ');
-  bufAppend('[');
-  if (p->expr_)  p->expr_->accept(this);
-  bufAppend(']');
-  bufAppend(' ');
-  visitIdent(p->ident_);
-  bufAppend(')');
-}
 void ShowAbsyn::visitEMethod(EMethod *p)
 {
   bufAppend('(');
@@ -1764,6 +1752,18 @@ void ShowAbsyn::visitEMethod(EMethod *p)
   if (p->listexpr_)  p->listexpr_->accept(this);
   bufAppend(']');
   bufAppend(' ');
+  bufAppend(')');
+}
+void ShowAbsyn::visitEField(EField *p)
+{
+  bufAppend('(');
+  bufAppend("EField");
+  bufAppend(' ');
+  bufAppend('[');
+  if (p->expr_)  p->expr_->accept(this);
+  bufAppend(']');
+  bufAppend(' ');
+  visitIdent(p->ident_);
   bufAppend(')');
 }
 void ShowAbsyn::visitEVar(EVar *p)

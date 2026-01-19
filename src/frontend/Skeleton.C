@@ -387,15 +387,6 @@ void Skeleton::visitENewObjCall(ENewObjCall *e_new_obj_call)
 
 }
 
-void Skeleton::visitEField(EField *e_field)
-{
-  /* Code For EField Goes Here */
-
-  if (e_field->expr_) e_field->expr_->accept(this);
-  visitIdent(e_field->ident_);
-
-}
-
 void Skeleton::visitEMethod(EMethod *e_method)
 {
   /* Code For EMethod Goes Here */
@@ -403,6 +394,15 @@ void Skeleton::visitEMethod(EMethod *e_method)
   if (e_method->expr_) e_method->expr_->accept(this);
   visitIdent(e_method->ident_);
   if (e_method->listexpr_) e_method->listexpr_->accept(this);
+
+}
+
+void Skeleton::visitEField(EField *e_field)
+{
+  /* Code For EField Goes Here */
+
+  if (e_field->expr_) e_field->expr_->accept(this);
+  visitIdent(e_field->ident_);
 
 }
 

@@ -101,8 +101,8 @@ class PrintAbsyn : public Visitor
   void visitENewArr(ENewArr *p);
   void visitENewObj(ENewObj *p);
   void visitENewObjCall(ENewObjCall *p);
-  void visitEField(EField *p);
   void visitEMethod(EMethod *p);
+  void visitEField(EField *p);
   void visitEVar(EVar *p);
   void visitELitInt(ELitInt *p);
   void visitELitTrue(ELitTrue *p);
@@ -292,8 +292,8 @@ class ShowAbsyn : public Visitor
   void visitENewArr(ENewArr *p);
   void visitENewObj(ENewObj *p);
   void visitENewObjCall(ENewObjCall *p);
-  void visitEField(EField *p);
   void visitEMethod(EMethod *p);
+  void visitEField(EField *p);
   void visitEVar(EVar *p);
   void visitELitInt(ELitInt *p);
   void visitELitTrue(ELitTrue *p);

@@ -110,9 +110,9 @@ ENewObj.        Expr6 ::= "new" Ident ;
 
 ENewObjCall.    Expr6 ::= "new" Ident "(" ")" ;
 
-EField.         Expr6 ::= Expr6 "." Ident ;
-
 EMethod.        Expr6 ::= Expr6 "." Ident "(" [Expr] ")" ;
+
+EField.         Expr6 ::= Expr6 "." Ident ;
 
 EVar.           Expr6 ::= Ident ;
 

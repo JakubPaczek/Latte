@@ -1955,53 +1955,6 @@ ENewObjCall *ENewObjCall::clone() const
 
 
 
-/********************   EField    ********************/
-EField::EField(Expr *p1, Ident p2)
-{
-  expr_ = p1;
-  ident_ = p2;
-
-}
-
-EField::EField(const EField & other)
-{
-  expr_ = other.expr_->clone();
-  ident_ = other.ident_;
-
-}
-
-EField &EField::operator=(const EField & other)
-{
-  EField tmp(other);
-  swap(tmp);
-  return *this;
-}
-
-void EField::swap(EField & other)
-{
-  std::swap(expr_, other.expr_);
-  std::swap(ident_, other.ident_);
-
-}
-
-EField::~EField()
-{
-  delete(expr_);
-
-}
-
-void EField::accept(Visitor *v)
-{
-  v->visitEField(this);
-}
-
-EField *EField::clone() const
-{
-  return new EField(*this);
-}
-
-
-
 /********************   EMethod    ********************/
 EMethod::EMethod(Expr *p1, Ident p2, ListExpr *p3)
 {
@@ -2049,6 +2002,53 @@ void EMethod::accept(Visitor *v)
 EMethod *EMethod::clone() const
 {
   return new EMethod(*this);
+}
+
+
+
+/********************   EField    ********************/
+EField::EField(Expr *p1, Ident p2)
+{
+  expr_ = p1;
+  ident_ = p2;
+
+}
+
+EField::EField(const EField & other)
+{
+  expr_ = other.expr_->clone();
+  ident_ = other.ident_;
+
+}
+
+EField &EField::operator=(const EField & other)
+{
+  EField tmp(other);
+  swap(tmp);
+  return *this;
+}
+
+void EField::swap(EField & other)
+{
+  std::swap(expr_, other.expr_);
+  std::swap(ident_, other.ident_);
+
+}
+
+EField::~EField()
+{
+  delete(expr_);
+
+}
+
+void EField::accept(Visitor *v)
+{
+  v->visitEField(this);
+}
+
+EField *EField::clone() const
+{
+  return new EField(*this);
 }
 
 
