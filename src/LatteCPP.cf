@@ -98,7 +98,7 @@ ESelf.          Expr7 ::= "self" ;
 
 ENull.          Expr7 ::= "null" ;
 
-ENullCast.      Expr7 ::= "(" Type ")" Expr7 ;
+ENullCast.      Expr7 ::= "(" Type ")" "null" ;
 
 ENewArr.        Expr7 ::= "new" BaseType "[" Expr "]" ;
 

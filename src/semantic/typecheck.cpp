@@ -545,7 +545,7 @@ bool TypeChecker::checkStmt(Stmt* stmt, const LatteType& expectedReturn)
     if (auto* s = dynamic_cast<ForEach*>(stmt))
     {
         LatteType iterT = checkExpr(s->expr_);
-        LatteType varT  = typeFromAst(s->type_);
+        LatteType varT  = typeFromAst(s->basetype_);
 
         // expr musi byc tablica
         if (iterT.kind != LatteTypeKind::Array || !iterT.elem)
@@ -574,6 +574,17 @@ bool TypeChecker::checkStmt(Stmt* stmt, const LatteType& expectedReturn)
 
     fail("Unknown statement kind (not handled in typechecker)", 0);
 }
+
+int TypeChecker::lineOf(Expr*) const { return 0; }
+int TypeChecker::lineOf(Stmt*) const { return 0; }
+bool TypeChecker::isReferenceType(const LatteType& t) const
+{
+    // DOPASUJ TO DO SWOJEGO LatteType:
+    // return t.isClass() || t.isArray();
+
+    return true; // <- jeśli masz takie metody
+}
+
 
 // ---------------- expressions ----------------
 
@@ -750,36 +761,24 @@ LatteType TypeChecker::checkExpr(Expr* expr)
     // - cast w dół/górę w hierarchii klas (jeśli chcesz dopuścić)
     // Jeśli nie chcesz wspierać castów teraz, lepiej dać czytelny błąd,
     // ale testy extensions mogą to wykorzystywać.
-    if (auto* e = dynamic_cast<ECast*>(expr))
-    {
-        LatteType dst = typeFromAst(e->type_);
-        LatteType src = checkExpr(e->expr_);
-
-        // null -> dowolny ref
-        if (src.kind == LatteTypeKind::Null && dst.isRef())
-            return dst;
-
-        // klasy: pozwalamy na cast w obrębie hierarchii (w górę i w dół),
-        // ale tylko jeśli istnieje relacja dziedziczenia w którąś stronę.
-        if (dst.kind == LatteTypeKind::Class && src.kind == LatteTypeKind::Class)
-        {
-            if (isSubClassOf(src.name, dst.name) || isSubClassOf(dst.name, src.name))
-                return dst;
-            fail("Invalid cast between unrelated class types", 0);
+    if (auto* e = dynamic_cast<ENullCast*>(expr)) {
+        LatteType target = typeFromAst(e->type_); // Type
+        LatteType inner  = checkExpr(e->expr_);   // Expr7
+    
+        // jeśli chcesz zgodności z testami:
+        // - dopuść tylko (T)null
+        // - tzn inner musi być null-literal
+        if (!dynamic_cast<ENull*>(e->expr_)) {
+            fail("Only (T)null cast is allowed", lineOf(expr));
         }
-
-        // tablice: dopuszczamy tylko identyczny typ (bez kowariancji)
-        if (dst.kind == LatteTypeKind::Array && src.kind == LatteTypeKind::Array)
-        {
-            if (dst == src) return dst;
-            fail("Invalid cast between different array types", 0);
+    
+        // target musi być referencyjny: class albo array
+        if (!isReferenceType(target)) {
+            fail("Cannot cast null to non-reference type", lineOf(expr));
         }
-
-        // prymitywy: tylko identyczny typ
-        if (dst == src) return dst;
-
-        fail("Invalid cast", 0);
+        return target;
     }
+    
 
     // --- Boolean / arithmetic / relational ops ---
 
@@ -969,6 +968,19 @@ LatteType TypeChecker::typeFromAst(Type* ty)
         fail("Function types are not supported in this frontend", 0);
 
     return LatteType::Unknown();
+}
+
+LatteType TypeChecker::typeFromAst(BaseType* t)
+{
+    if (dynamic_cast<Int*>(t))  return LatteType::Int();
+    if (dynamic_cast<Str*>(t))  return LatteType::String();
+    if (dynamic_cast<Bool*>(t)) return LatteType::Bool();
+
+    if (auto* c = dynamic_cast<ClassT*>(t))
+        return LatteType::Class(c->ident_);
+
+    fail("Unknown BaseType in typeFromAst(BaseType*)", 0);
+    return LatteType::Void(); // żeby uciszyć kompilator
 }
 
 LatteType TypeChecker::baseTypeFromAst(BaseType* bt)

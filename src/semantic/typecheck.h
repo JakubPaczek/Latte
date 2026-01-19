@@ -31,11 +31,17 @@ private:
 
     LatteType checkExpr(Expr* expr);
     LatteType typeFromAst(Type* ty);
+    LatteType typeFromAst(BaseType* t);
     LatteType baseTypeFromAst(BaseType* bt);
 
     LatteType checkLValueExpr(Expr* e);
 
     LatteType dtypeFromAst(DType* ty);
+
+    int lineOf(Expr* e) const;
+    int lineOf(Stmt* s) const;
+
+    bool isReferenceType(const LatteType& t) const;
 
     bool isAssignable(const LatteType& dst, const LatteType& src) const;
     bool isSubClassOf(const std::string& sub, const std::string& base) const;

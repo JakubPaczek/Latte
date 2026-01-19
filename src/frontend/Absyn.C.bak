@@ -1676,15 +1676,17 @@ ENull *ENull::clone() const
 
 
 /********************   ENullCast    ********************/
-ENullCast::ENullCast(Type *p1)
+ENullCast::ENullCast(Type *p1, Expr *p2)
 {
   type_ = p1;
+  expr_ = p2;
 
 }
 
 ENullCast::ENullCast(const ENullCast & other)
 {
   type_ = other.type_->clone();
+  expr_ = other.expr_->clone();
 
 }
 
@@ -1698,12 +1700,14 @@ ENullCast &ENullCast::operator=(const ENullCast & other)
 void ENullCast::swap(ENullCast & other)
 {
   std::swap(type_, other.type_);
+  std::swap(expr_, other.expr_);
 
 }
 
 ENullCast::~ENullCast()
 {
   delete(type_);
+  delete(expr_);
 
 }
 
