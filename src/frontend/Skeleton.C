@@ -327,13 +327,6 @@ void Skeleton::visitESelf(ESelf *e_self)
 
 }
 
-void Skeleton::visitENull(ENull *e_null)
-{
-  /* Code For ENull Goes Here */
-
-
-}
-
 void Skeleton::visitENullCast(ENullCast *e_null_cast)
 {
   /* Code For ENullCast Goes Here */
@@ -403,14 +396,6 @@ void Skeleton::visitEApp(EApp *e_app)
 
   visitIdent(e_app->ident_);
   if (e_app->listexpr_) e_app->listexpr_->accept(this);
-
-}
-
-void Skeleton::visitEAtom(EAtom *e_atom)
-{
-  /* Code For EAtom Goes Here */
-
-  if (e_atom->expr_) e_atom->expr_->accept(this);
 
 }
 

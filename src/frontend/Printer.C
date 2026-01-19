@@ -720,17 +720,6 @@ void PrintAbsyn::visitESelf(ESelf *p)
   _i_ = oldi;
 }
 
-void PrintAbsyn::visitENull(ENull *p)
-{
-  int oldi = _i_;
-  if (oldi > 7) render(_L_PAREN);
-
-  render("null");
-
-  if (oldi > 7) render(_R_PAREN);
-  _i_ = oldi;
-}
-
 void PrintAbsyn::visitENullCast(ENullCast *p)
 {
   int oldi = _i_;
@@ -838,17 +827,6 @@ void PrintAbsyn::visitEApp(EApp *p)
   render(')');
 
   if (oldi > 7) render(_R_PAREN);
-  _i_ = oldi;
-}
-
-void PrintAbsyn::visitEAtom(EAtom *p)
-{
-  int oldi = _i_;
-  if (oldi > 6) render(_L_PAREN);
-
-  _i_ = 7; p->expr_->accept(this);
-
-  if (oldi > 6) render(_R_PAREN);
   _i_ = oldi;
 }
 
@@ -1641,10 +1619,6 @@ void ShowAbsyn::visitESelf(ESelf *p)
 {
   bufAppend("ESelf");
 }
-void ShowAbsyn::visitENull(ENull *p)
-{
-  bufAppend("ENull");
-}
 void ShowAbsyn::visitENullCast(ENullCast *p)
 {
   bufAppend('(');
@@ -1722,16 +1696,6 @@ void ShowAbsyn::visitEApp(EApp *p)
   if (p->listexpr_)  p->listexpr_->accept(this);
   bufAppend(']');
   bufAppend(' ');
-  bufAppend(')');
-}
-void ShowAbsyn::visitEAtom(EAtom *p)
-{
-  bufAppend('(');
-  bufAppend("EAtom");
-  bufAppend(' ');
-  bufAppend('[');
-  if (p->expr_)  p->expr_->accept(this);
-  bufAppend(']');
   bufAppend(')');
 }
 void ShowAbsyn::visitEIndex(EIndex *p)

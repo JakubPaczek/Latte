@@ -60,7 +60,6 @@ public:
   void visitFun(Fun *p);
   void visitEParen(EParen *p);
   void visitESelf(ESelf *p);
-  void visitENull(ENull *p);
   void visitENullCast(ENullCast *p);
   void visitENewArr(ENewArr *p);
   void visitENewObj(ENewObj *p);
@@ -70,7 +69,6 @@ public:
   void visitELitFalse(ELitFalse *p);
   void visitEString(EString *p);
   void visitEApp(EApp *p);
-  void visitEAtom(EAtom *p);
   void visitEIndex(EIndex *p);
   void visitEMethod(EMethod *p);
   void visitEField(EField *p);

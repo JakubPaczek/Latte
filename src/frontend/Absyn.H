@@ -71,7 +71,6 @@ class Void;
 class Fun;
 class EParen;
 class ESelf;
-class ENull;
 class ENullCast;
 class ENewArr;
 class ENewObj;
@@ -81,7 +80,6 @@ class ELitTrue;
 class ELitFalse;
 class EString;
 class EApp;
-class EAtom;
 class EIndex;
 class EMethod;
 class EField;
@@ -167,7 +165,6 @@ public:
   virtual void visitFun(Fun *p) = 0;
   virtual void visitEParen(EParen *p) = 0;
   virtual void visitESelf(ESelf *p) = 0;
-  virtual void visitENull(ENull *p) = 0;
   virtual void visitENullCast(ENullCast *p) = 0;
   virtual void visitENewArr(ENewArr *p) = 0;
   virtual void visitENewObj(ENewObj *p) = 0;
@@ -177,7 +174,6 @@ public:
   virtual void visitELitFalse(ELitFalse *p) = 0;
   virtual void visitEString(EString *p) = 0;
   virtual void visitEApp(EApp *p) = 0;
-  virtual void visitEAtom(EAtom *p) = 0;
   virtual void visitEIndex(EIndex *p) = 0;
   virtual void visitEMethod(EMethod *p) = 0;
   virtual void visitEField(EField *p) = 0;
@@ -845,19 +841,6 @@ public:
   void swap(ESelf &);
 };
 
-class ENull : public Expr
-{
-public:
-
-  ENull(const ENull &);
-  ENull &operator=(const ENull &);
-  ENull();
-  ~ENull();
-  virtual void accept(Visitor *v);
-  virtual ENull *clone() const;
-  void swap(ENull &);
-};
-
 class ENullCast : public Expr
 {
 public:
@@ -982,20 +965,6 @@ public:
   virtual void accept(Visitor *v);
   virtual EApp *clone() const;
   void swap(EApp &);
-};
-
-class EAtom : public Expr
-{
-public:
-  Expr *expr_;
-
-  EAtom(const EAtom &);
-  EAtom &operator=(const EAtom &);
-  EAtom(Expr *p1);
-  ~EAtom();
-  virtual void accept(Visitor *v);
-  virtual EAtom *clone() const;
-  void swap(EAtom &);
 };
 
 class EIndex : public Expr

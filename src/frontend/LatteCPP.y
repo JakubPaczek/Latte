@@ -233,7 +233,6 @@ ListType : /* empty */ { $$ = new ListType(); }
 ;
 Expr7 : _LPAREN Expr _RPAREN { $$ = new EParen($2); }
   | _KW_self { $$ = new ESelf(); }
-  | _KW_null { $$ = new ENull(); }
   | _LPAREN Type _RPAREN _KW_null { $$ = new ENullCast($2); }
   | _KW_new BaseType _LBRACK Expr _RBRACK { $$ = new ENewArr($2, $4); }
   | _KW_new _IDENT_ { $$ = new ENewObj($2); }
@@ -245,8 +244,7 @@ Expr7 : _LPAREN Expr _RPAREN { $$ = new EParen($2); }
   | _IDENT_ _LPAREN ListExpr _RPAREN { std::reverse($3->begin(),$3->end()) ;$$ = new EApp($1, $3); }
   | _LPAREN Expr _RPAREN { $$ = $2; }
 ;
-Expr6 : Expr7 { $$ = new EAtom($1); }
-  | Expr6 _LBRACK Expr _RBRACK { $$ = new EIndex($1, $3); }
+Expr6 : Expr6 _LBRACK Expr _RBRACK { $$ = new EIndex($1, $3); }
   | Expr6 _DOT _IDENT_ _LPAREN ListExpr _RPAREN { std::reverse($5->begin(),$5->end()) ;$$ = new EMethod($1, $3, $5); }
   | Expr6 _DOT _IDENT_ { $$ = new EField($1, $3); }
   | Expr7 { $$ = $1; }

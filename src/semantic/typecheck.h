@@ -45,6 +45,7 @@ private:
 
     bool isAssignable(const LatteType& dst, const LatteType& src) const;
     bool isSubClassOf(const std::string& sub, const std::string& base) const;
+    static Expr* stripWrappers(Expr* e);
 
     std::optional<LatteType> lookupVarOrFieldType(const std::string& name) const;
 

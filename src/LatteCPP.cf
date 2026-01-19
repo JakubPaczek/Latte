@@ -96,8 +96,6 @@ EParen.         Expr7 ::= "(" Expr ")" ;
 
 ESelf.          Expr7 ::= "self" ;
 
-ENull.          Expr7 ::= "null" ;
-
 ENullCast.      Expr7 ::= "(" Type ")" "null" ;
 
 ENewArr.        Expr7 ::= "new" BaseType "[" Expr "]" ;
@@ -115,8 +113,6 @@ ELitFalse.      Expr7 ::= "false" ;
 EString.        Expr7 ::= String ;
 
 EApp.           Expr7 ::= Ident "(" [Expr] ")" ;
-
-EAtom.          Expr6 ::= Expr7 ;
 
 EIndex.         Expr6 ::= Expr6 "[" Expr "]" ;
 

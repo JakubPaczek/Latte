@@ -11,6 +11,14 @@ TypeChecker::TypeChecker()
     collectPredefinedFunctions();
 }
 
+static Expr* stripWrappers(Expr* e) {
+    while (true) {
+        if (auto* a = dynamic_cast<EAtom*>(e))  { e = a->expr_; continue; }
+        if (auto* p = dynamic_cast<EParen*>(e)) { e = p->expr_; continue; }
+        return e;
+    }
+}
+
 void TypeChecker::checkProgram(Program* program)
 {
     if (!program) fail("Empty program", 0);
@@ -456,38 +464,32 @@ bool TypeChecker::checkStmt(Stmt* stmt, const LatteType& expectedReturn)
 
     if (auto* s = dynamic_cast<Ass*>(stmt))
     {
-        Expr* lhs = s->expr_1;              // lub jak u Ciebie się nazywa
-        Expr* lhs0 = stripWrappers(lhs);
+        // BNFC dla: Stmt ::= Expr6 "=" Expr ";"
+        Expr* lhs = s->expr_1;
+        Expr* rhs = s->expr_2;
     
-        if (!(dynamic_cast<EVar*>(lhs0) ||
-              dynamic_cast<EField*>(lhs0) ||
-              dynamic_cast<EIndex*>(lhs0))) {
-            fail("Left side of assignment must be a variable, field, or array element", 0);
-        }
+        LatteType lhsT = checkLValueExpr(stripWrappers(lhs));
+        LatteType rhsT = checkExpr(rhs);
+    
+        if (!isAssignable(lhsT, rhsT))
+            fail("Type mismatch in assignment", lineOf(stmt));
+    
         return false;
     }
-
+    
     if (auto* s = dynamic_cast<Incr*>(stmt))
     {
-        Expr* lhs0 = stripWrappers(s->expr_);
-        if (!(dynamic_cast<EVar*>(lhs0) ||
-              dynamic_cast<EField*>(lhs0) ||
-              dynamic_cast<EIndex*>(lhs0))) {
-            fail("Increment/decrement target must be a variable, field, or array element", 0);
-        }
-        
+        LatteType t = checkLValueExpr(stripWrappers(s->expr_));
+        if (t != LatteType::Int())
+            fail("Increment expects int l-value", lineOf(stmt));
         return false;
     }
-
+    
     if (auto* s = dynamic_cast<Decr*>(stmt))
     {
-        Expr* lhs0 = stripWrappers(s->expr_);
-        if (!(dynamic_cast<EVar*>(lhs0) ||
-              dynamic_cast<EField*>(lhs0) ||
-              dynamic_cast<EIndex*>(lhs0))) {
-            fail("Increment/decrement target must be a variable, field, or array element", 0);
-        }
-        
+        LatteType t = checkLValueExpr(stripWrappers(s->expr_));
+        if (t != LatteType::Int())
+            fail("Decrement expects int l-value", lineOf(stmt));
         return false;
     }
 
@@ -591,21 +593,10 @@ int TypeChecker::lineOf(Expr*) const { return 0; }
 int TypeChecker::lineOf(Stmt*) const { return 0; }
 bool TypeChecker::isReferenceType(const LatteType& t) const
 {
-    // DOPASUJ TO DO SWOJEGO LatteType:
-    // return t.isClass() || t.isArray();
-
-    return true; // <- jeśli masz takie metody
+    return t.kind == LatteTypeKind::Class || t.kind == LatteTypeKind::Array;
 }
 
 // ---------------- expressions ----------------
-
-static Expr* stripWrappers(Expr* e) {
-    while (true) {
-        if (auto* a = dynamic_cast<EAtom*>(e))  { e = a->expr_; continue; }
-        if (auto* p = dynamic_cast<EParen*>(e)) { e = p->expr_; continue; }
-        return e;
-    }
-}
 
 LatteType TypeChecker::checkExpr(Expr* expr)
 {
@@ -621,7 +612,7 @@ LatteType TypeChecker::checkExpr(Expr* expr)
 
     // null
     if (dynamic_cast<ENull*>(expr))
-        return LatteType::Null();
+        fail("Use (T)null for typed null", lineOf(expr));
     
     // int / bool / string literals
     if (dynamic_cast<ELitInt*>(expr))
@@ -1058,11 +1049,9 @@ std::optional<LatteType> TypeChecker::lookupVarOrFieldType(const std::string& na
     if (auto vi = env_.lookupVar(name))
         return vi->type;
 
-    if (currentClass_.has_value())
-    {
-        auto fi = env_.lookupField(*currentClass_, name);
-        if (fi.has_value())
-            return fi->type;
+    if (currentClass_) {
+        auto fi = env_.lookupField(*currentClass_, name); // idzie po bazach
+        if (fi) return fi->type;
     }
 
     return std::nullopt;

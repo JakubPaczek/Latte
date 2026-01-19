@@ -1635,46 +1635,6 @@ ESelf *ESelf::clone() const
 
 
 
-/********************   ENull    ********************/
-ENull::ENull()
-{
-
-}
-
-ENull::ENull(const ENull & other)
-{
-
-}
-
-ENull &ENull::operator=(const ENull & other)
-{
-  ENull tmp(other);
-  swap(tmp);
-  return *this;
-}
-
-void ENull::swap(ENull & other)
-{
-
-}
-
-ENull::~ENull()
-{
-
-}
-
-void ENull::accept(Visitor *v)
-{
-  v->visitENull(this);
-}
-
-ENull *ENull::clone() const
-{
-  return new ENull(*this);
-}
-
-
-
 /********************   ENullCast    ********************/
 ENullCast::ENullCast(Type *p1)
 {
@@ -2062,50 +2022,6 @@ void EApp::accept(Visitor *v)
 EApp *EApp::clone() const
 {
   return new EApp(*this);
-}
-
-
-
-/********************   EAtom    ********************/
-EAtom::EAtom(Expr *p1)
-{
-  expr_ = p1;
-
-}
-
-EAtom::EAtom(const EAtom & other)
-{
-  expr_ = other.expr_->clone();
-
-}
-
-EAtom &EAtom::operator=(const EAtom & other)
-{
-  EAtom tmp(other);
-  swap(tmp);
-  return *this;
-}
-
-void EAtom::swap(EAtom & other)
-{
-  std::swap(expr_, other.expr_);
-
-}
-
-EAtom::~EAtom()
-{
-  delete(expr_);
-
-}
-
-void EAtom::accept(Visitor *v)
-{
-  v->visitEAtom(this);
-}
-
-EAtom *EAtom::clone() const
-{
-  return new EAtom(*this);
 }
 
 
