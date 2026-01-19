@@ -13,6 +13,7 @@ TypeChecker::TypeChecker()
 
 static Expr* stripWrappers(Expr* e) {
     while (true) {
+        if (auto* a = dynamic_cast<EAtom*>(e))  { e = a->expr_; continue; }
         if (auto* p = dynamic_cast<EParen*>(e)) { e = p->expr_; continue; }
         return e;
     }
@@ -619,6 +620,9 @@ bool TypeChecker::isReferenceType(const LatteType& t) const
 LatteType TypeChecker::checkExpr(Expr* expr)
 {
     if (!expr) return LatteType::Unknown();
+
+    if (auto* a = dynamic_cast<EAtom*>(expr))
+        return checkExpr(a->expr_);
 
     // (Expr)
     if (auto* p = dynamic_cast<EParen*>(expr))

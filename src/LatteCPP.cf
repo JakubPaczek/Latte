@@ -70,11 +70,11 @@ DVoid.          DType ::= "void" ;
 
 DTypeBase.      DType ::= BaseType ;
 
-DTypeArr.       DType ::= BaseType "[" "]" ;
+DTypeArr.       DType ::= BaseType "[]" ;
 
 TBase.          Type ::= BaseType ;
 
-TArr.           Type ::= BaseType "[" "]" ; -- 1D arrays
+TArr.           Type  ::= BaseType "[]" ; -- 1D arrays
 
 Int.            BaseType ::= "int" ;
 
@@ -113,6 +113,8 @@ ELitFalse.      Expr7 ::= "false" ;
 EString.        Expr7 ::= String ;
 
 EApp.           Expr7 ::= Ident "(" [Expr] ")" ;
+
+EAtom.          Expr6 ::= Expr7 ;
 
 EIndex.         Expr6 ::= Expr6 "[" Expr "]" ;
 

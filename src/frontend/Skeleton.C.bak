@@ -399,14 +399,6 @@ void Skeleton::visitEApp(EApp *e_app)
 
 }
 
-void Skeleton::visitEAtom(EAtom *e_atom)
-{
-  /* Code For EAtom Goes Here */
-
-  if (e_atom->expr_) e_atom->expr_->accept(this);
-
-}
-
 void Skeleton::visitEIndex(EIndex *e_index)
 {
   /* Code For EIndex Goes Here */

@@ -572,7 +572,8 @@ void PrintAbsyn::visitDTypeArr(DTypeArr *p)
   if (oldi > 0) render(_L_PAREN);
 
   _i_ = 0; p->basetype_->accept(this);
-  render("[]");
+  render('[');
+  render(']');
 
   if (oldi > 0) render(_R_PAREN);
   _i_ = oldi;
@@ -597,7 +598,8 @@ void PrintAbsyn::visitTArr(TArr *p)
   if (oldi > 0) render(_L_PAREN);
 
   _i_ = 0; p->basetype_->accept(this);
-  render("[]");
+  render('[');
+  render(']');
 
   if (oldi > 0) render(_R_PAREN);
   _i_ = oldi;
@@ -825,17 +827,6 @@ void PrintAbsyn::visitEApp(EApp *p)
   render(')');
 
   if (oldi > 7) render(_R_PAREN);
-  _i_ = oldi;
-}
-
-void PrintAbsyn::visitEAtom(EAtom *p)
-{
-  int oldi = _i_;
-  if (oldi > 6) render(_L_PAREN);
-
-  _i_ = 7; p->expr_->accept(this);
-
-  if (oldi > 6) render(_R_PAREN);
   _i_ = oldi;
 }
 
@@ -1705,16 +1696,6 @@ void ShowAbsyn::visitEApp(EApp *p)
   if (p->listexpr_)  p->listexpr_->accept(this);
   bufAppend(']');
   bufAppend(' ');
-  bufAppend(')');
-}
-void ShowAbsyn::visitEAtom(EAtom *p)
-{
-  bufAppend('(');
-  bufAppend("EAtom");
-  bufAppend(' ');
-  bufAppend('[');
-  if (p->expr_)  p->expr_->accept(this);
-  bufAppend(']');
   bufAppend(')');
 }
 void ShowAbsyn::visitEIndex(EIndex *p)

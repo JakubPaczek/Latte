@@ -69,7 +69,6 @@ public:
   void visitELitFalse(ELitFalse *p);
   void visitEString(EString *p);
   void visitEApp(EApp *p);
-  void visitEAtom(EAtom *p);
   void visitEIndex(EIndex *p);
   void visitEMethod(EMethod *p);
   void visitEField(EField *p);

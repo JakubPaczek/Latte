@@ -2026,50 +2026,6 @@ EApp *EApp::clone() const
 
 
 
-/********************   EAtom    ********************/
-EAtom::EAtom(Expr *p1)
-{
-  expr_ = p1;
-
-}
-
-EAtom::EAtom(const EAtom & other)
-{
-  expr_ = other.expr_->clone();
-
-}
-
-EAtom &EAtom::operator=(const EAtom & other)
-{
-  EAtom tmp(other);
-  swap(tmp);
-  return *this;
-}
-
-void EAtom::swap(EAtom & other)
-{
-  std::swap(expr_, other.expr_);
-
-}
-
-EAtom::~EAtom()
-{
-  delete(expr_);
-
-}
-
-void EAtom::accept(Visitor *v)
-{
-  v->visitEAtom(this);
-}
-
-EAtom *EAtom::clone() const
-{
-  return new EAtom(*this);
-}
-
-
-
 /********************   EIndex    ********************/
 EIndex::EIndex(Expr *p1, Expr *p2)
 {
