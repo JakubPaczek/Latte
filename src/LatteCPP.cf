@@ -44,11 +44,11 @@ Init.       Item ::= Ident "=" Expr ;
 
 separator   nonempty Item "," ;
 
-Ass.        Stmt ::= LVal "=" Expr ";" ;
+Ass.        Stmt ::= Expr6 "=" Expr ";" ;
 
-Incr.       Stmt ::= LVal "++" ";" ;
+Incr.       Stmt ::= Expr6 "++" ";" ;
 
-Decr.       Stmt ::= LVal "--" ";" ;
+Decr.       Stmt ::= Expr6 "--" ";" ;
 
 LVar.       LVal ::= Ident ;
 
@@ -96,8 +96,6 @@ separator       Type "," ;
 
 ESelf.          Expr7 ::= "self" ;
 
-EParen.         Expr7 ::= "(" Expr ")" ;
-
 ENull.          Expr7 ::= "null" ;
 
 ECast.          Expr7 ::= "(" Type ")" Expr6 ;
@@ -117,8 +115,6 @@ ELitFalse.      Expr7 ::= "false" ;
 EString.        Expr7 ::= String ;
 
 EApp.           Expr7 ::= Ident "(" [Expr] ")" ;
-
-EPrim.          Expr6 ::= Expr7 ;
 
 EIndex.         Expr6 ::= Expr6 "[" Expr "]" ;
 

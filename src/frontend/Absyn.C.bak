@@ -528,17 +528,17 @@ Decl *Decl::clone() const
 
 
 /********************   Ass    ********************/
-Ass::Ass(Expr *p1, Expr *p2)
+Ass::Ass(LVal *p1, Expr *p2)
 {
-  expr_1 = p1;
-  expr_2 = p2;
+  lval_ = p1;
+  expr_ = p2;
 
 }
 
 Ass::Ass(const Ass & other)
 {
-  expr_1 = other.expr_1->clone();
-  expr_2 = other.expr_2->clone();
+  lval_ = other.lval_->clone();
+  expr_ = other.expr_->clone();
 
 }
 
@@ -551,15 +551,15 @@ Ass &Ass::operator=(const Ass & other)
 
 void Ass::swap(Ass & other)
 {
-  std::swap(expr_1, other.expr_1);
-  std::swap(expr_2, other.expr_2);
+  std::swap(lval_, other.lval_);
+  std::swap(expr_, other.expr_);
 
 }
 
 Ass::~Ass()
 {
-  delete(expr_1);
-  delete(expr_2);
+  delete(lval_);
+  delete(expr_);
 
 }
 
@@ -576,15 +576,15 @@ Ass *Ass::clone() const
 
 
 /********************   Incr    ********************/
-Incr::Incr(Expr *p1)
+Incr::Incr(LVal *p1)
 {
-  expr_ = p1;
+  lval_ = p1;
 
 }
 
 Incr::Incr(const Incr & other)
 {
-  expr_ = other.expr_->clone();
+  lval_ = other.lval_->clone();
 
 }
 
@@ -597,13 +597,13 @@ Incr &Incr::operator=(const Incr & other)
 
 void Incr::swap(Incr & other)
 {
-  std::swap(expr_, other.expr_);
+  std::swap(lval_, other.lval_);
 
 }
 
 Incr::~Incr()
 {
-  delete(expr_);
+  delete(lval_);
 
 }
 
@@ -620,15 +620,15 @@ Incr *Incr::clone() const
 
 
 /********************   Decr    ********************/
-Decr::Decr(Expr *p1)
+Decr::Decr(LVal *p1)
 {
-  expr_ = p1;
+  lval_ = p1;
 
 }
 
 Decr::Decr(const Decr & other)
 {
-  expr_ = other.expr_->clone();
+  lval_ = other.lval_->clone();
 
 }
 
@@ -641,13 +641,13 @@ Decr &Decr::operator=(const Decr & other)
 
 void Decr::swap(Decr & other)
 {
-  std::swap(expr_, other.expr_);
+  std::swap(lval_, other.lval_);
 
 }
 
 Decr::~Decr()
 {
-  delete(expr_);
+  delete(lval_);
 
 }
 
@@ -1641,6 +1641,50 @@ ESelf *ESelf::clone() const
 
 
 
+/********************   EParen    ********************/
+EParen::EParen(Expr *p1)
+{
+  expr_ = p1;
+
+}
+
+EParen::EParen(const EParen & other)
+{
+  expr_ = other.expr_->clone();
+
+}
+
+EParen &EParen::operator=(const EParen & other)
+{
+  EParen tmp(other);
+  swap(tmp);
+  return *this;
+}
+
+void EParen::swap(EParen & other)
+{
+  std::swap(expr_, other.expr_);
+
+}
+
+EParen::~EParen()
+{
+  delete(expr_);
+
+}
+
+void EParen::accept(Visitor *v)
+{
+  v->visitEParen(this);
+}
+
+EParen *EParen::clone() const
+{
+  return new EParen(*this);
+}
+
+
+
 /********************   ENull    ********************/
 ENull::ENull()
 {
@@ -2072,6 +2116,50 @@ void EApp::accept(Visitor *v)
 EApp *EApp::clone() const
 {
   return new EApp(*this);
+}
+
+
+
+/********************   EPrim    ********************/
+EPrim::EPrim(Expr *p1)
+{
+  expr_ = p1;
+
+}
+
+EPrim::EPrim(const EPrim & other)
+{
+  expr_ = other.expr_->clone();
+
+}
+
+EPrim &EPrim::operator=(const EPrim & other)
+{
+  EPrim tmp(other);
+  swap(tmp);
+  return *this;
+}
+
+void EPrim::swap(EPrim & other)
+{
+  std::swap(expr_, other.expr_);
+
+}
+
+EPrim::~EPrim()
+{
+  delete(expr_);
+
+}
+
+void EPrim::accept(Visitor *v)
+{
+  v->visitEPrim(this);
+}
+
+EPrim *EPrim::clone() const
+{
+  return new EPrim(*this);
 }
 
 

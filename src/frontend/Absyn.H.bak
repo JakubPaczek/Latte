@@ -71,6 +71,7 @@ class ClassT;
 class Void;
 class Fun;
 class ESelf;
+class EParen;
 class ENull;
 class ECast;
 class ENewArr;
@@ -81,6 +82,7 @@ class ELitTrue;
 class ELitFalse;
 class EString;
 class EApp;
+class EPrim;
 class EIndex;
 class EMethod;
 class EField;
@@ -166,6 +168,7 @@ public:
   virtual void visitVoid(Void *p) = 0;
   virtual void visitFun(Fun *p) = 0;
   virtual void visitESelf(ESelf *p) = 0;
+  virtual void visitEParen(EParen *p) = 0;
   virtual void visitENull(ENull *p) = 0;
   virtual void visitECast(ECast *p) = 0;
   virtual void visitENewArr(ENewArr *p) = 0;
@@ -176,6 +179,7 @@ public:
   virtual void visitELitFalse(ELitFalse *p) = 0;
   virtual void visitEString(EString *p) = 0;
   virtual void visitEApp(EApp *p) = 0;
+  virtual void visitEPrim(EPrim *p) = 0;
   virtual void visitEIndex(EIndex *p) = 0;
   virtual void visitEMethod(EMethod *p) = 0;
   virtual void visitEField(EField *p) = 0;
@@ -493,12 +497,12 @@ public:
 class Ass : public Stmt
 {
 public:
-  Expr *expr_1;
-  Expr *expr_2;
+  LVal *lval_;
+  Expr *expr_;
 
   Ass(const Ass &);
   Ass &operator=(const Ass &);
-  Ass(Expr *p1, Expr *p2);
+  Ass(LVal *p1, Expr *p2);
   ~Ass();
   virtual void accept(Visitor *v);
   virtual Ass *clone() const;
@@ -508,11 +512,11 @@ public:
 class Incr : public Stmt
 {
 public:
-  Expr *expr_;
+  LVal *lval_;
 
   Incr(const Incr &);
   Incr &operator=(const Incr &);
-  Incr(Expr *p1);
+  Incr(LVal *p1);
   ~Incr();
   virtual void accept(Visitor *v);
   virtual Incr *clone() const;
@@ -522,11 +526,11 @@ public:
 class Decr : public Stmt
 {
 public:
-  Expr *expr_;
+  LVal *lval_;
 
   Decr(const Decr &);
   Decr &operator=(const Decr &);
-  Decr(Expr *p1);
+  Decr(LVal *p1);
   ~Decr();
   virtual void accept(Visitor *v);
   virtual Decr *clone() const;
@@ -845,6 +849,20 @@ public:
   void swap(ESelf &);
 };
 
+class EParen : public Expr
+{
+public:
+  Expr *expr_;
+
+  EParen(const EParen &);
+  EParen &operator=(const EParen &);
+  EParen(Expr *p1);
+  ~EParen();
+  virtual void accept(Visitor *v);
+  virtual EParen *clone() const;
+  void swap(EParen &);
+};
+
 class ENull : public Expr
 {
 public:
@@ -983,6 +1001,20 @@ public:
   virtual void accept(Visitor *v);
   virtual EApp *clone() const;
   void swap(EApp &);
+};
+
+class EPrim : public Expr
+{
+public:
+  Expr *expr_;
+
+  EPrim(const EPrim &);
+  EPrim &operator=(const EPrim &);
+  EPrim(Expr *p1);
+  ~EPrim();
+  virtual void accept(Visitor *v);
+  virtual EPrim *clone() const;
+  void swap(EPrim &);
 };
 
 class EIndex : public Expr
