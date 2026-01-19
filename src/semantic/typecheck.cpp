@@ -563,6 +563,63 @@ LatteType TypeChecker::checkExpr(Expr* expr)
 {
     if (!expr) return LatteType::Unknown();
 
+    // (Expr)
+    if (auto* e = dynamic_cast<EParen*>(expr))
+        return checkExpr(e->expr_);
+
+    // int literal
+    if (dynamic_cast<ELitInt*>(expr))
+        return LatteType::Int();
+
+    // bool literal
+    if (dynamic_cast<ELitTrue*>(expr) || dynamic_cast<ELitFalse*>(expr))
+        return LatteType::Bool();
+
+    // string literal
+    if (dynamic_cast<EString*>(expr))
+        return LatteType::String();
+
+    // null
+    if (dynamic_cast<ENull*>(expr))
+        return LatteType::Null();
+
+    // variable
+    if (auto* e = dynamic_cast<EVar*>(expr))
+    {
+        auto t = lookupVarOrFieldType(e->ident_);
+        if (!t.has_value())
+            fail("Use of undeclared identifier '" + std::string(e->ident_) + "'", 0);
+        return *t;
+    }
+
+    // function call: f(...)
+    if (auto* e = dynamic_cast<EApp*>(expr))
+    {
+        std::string fname = e->ident_;
+        auto finfo = env_.lookupFunction(fname);
+        if (!finfo.has_value())
+            fail("Call to unknown function '" + fname + "'", 0);
+
+        std::vector<LatteType> actuals;
+        if (e->listexpr_)
+        {
+            for (Expr* a : *e->listexpr_)
+                actuals.push_back(checkExpr(a));
+        }
+
+        if (actuals.size() != finfo->args.size())
+            fail("Wrong number of arguments in call to '" + fname + "'", 0);
+
+        for (size_t i = 0; i < actuals.size(); ++i)
+        {
+            if (!isAssignable(finfo->args[i], actuals[i]))
+                fail("Type mismatch in argument " + std::to_string(i+1) +
+                     " of call to '" + fname + "'", 0);
+        }
+
+        return finfo->result;
+    }
+
     // EOr
     if (auto* e = dynamic_cast<EOr*>(expr))
     {
