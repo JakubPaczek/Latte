@@ -1,4 +1,4 @@
-#include "typecheck.hpp"
+#include "typecheck.h"
 
 #include <vector>
 #include <string>
@@ -659,188 +659,7 @@ LatteType TypeChecker::checkExpr(Expr* expr)
         return LatteType::Bool();
     }
 
-    // Reszta siedzi w Expr6 (po coercions)
-    if (auto* e6 = dynamic_cast<Expr6*>(expr))
-        return checkExpr6(e6);
-
     fail("Unknown expression kind (not handled in typechecker)", 0);
-}
-
-LatteType TypeChecker::checkExpr6(Expr6* expr)
-{
-    // (Expr)
-    if (auto* e = dynamic_cast<EParen*>(expr))
-        return checkExpr(e->expr_);
-
-    // null
-    if (dynamic_cast<ENull*>(expr))
-        return LatteType::Null();
-
-    // (Type) Expr6
-    if (auto* e = dynamic_cast<ECast*>(expr))
-    {
-        LatteType dst = typeFromAst(e->type_);
-        LatteType src = checkExpr6(e->expr_); // tylko Expr6 wg gramatyki
-
-        // minimalnie: pozwalamy rzutować null na dowolny ref
-        if (src.kind == LatteTypeKind::Null && dst.isRef())
-            return dst;
-
-        // klasy: pozwalamy na cast w hierarchii (w obie strony) — jak w Javie (bez weryfikacji runtime na razie)
-        if (dst.kind == LatteTypeKind::Class && src.kind == LatteTypeKind::Class)
-        {
-            if (isSubClassOf(src.name, dst.name) || isSubClassOf(dst.name, src.name) || src.name == dst.name)
-                return dst;
-        }
-
-        // tablice: tylko ten sam typ (na razie)
-        if (dst.kind == LatteTypeKind::Array && src.kind == LatteTypeKind::Array && dst == src)
-            return dst;
-
-        // string: tylko string
-        if (dst.kind == LatteTypeKind::String && src.kind == LatteTypeKind::String)
-            return dst;
-
-        fail("Invalid cast", 0);
-    }
-
-    // a[i]
-    if (auto* e = dynamic_cast<EIndex*>(expr))
-    {
-        LatteType arrT = checkExpr6(e->expr_1);
-        LatteType idxT = checkExpr(e->expr_2);
-        if (idxT != LatteType::Int())
-            fail("Array index must be int", 0);
-
-        if (arrT.kind != LatteTypeKind::Array || !arrT.elem)
-            fail("Indexing requires array type", 0);
-
-        return *arrT.elem;
-    }
-
-    // a.length
-    if (auto* e = dynamic_cast<ELength*>(expr))
-    {
-        LatteType arrT = checkExpr6(e->expr_);
-        if (arrT.kind != LatteTypeKind::Array)
-            fail("'.length' is valid only on arrays", 0);
-        return LatteType::Int();
-    }
-
-    // new T[n]
-    if (auto* e = dynamic_cast<ENewArr*>(expr))
-    {
-        LatteType bt = baseTypeFromAst(e->basetype_);
-        if (bt.kind == LatteTypeKind::Void)
-            fail("Cannot create array of void", 0);
-
-        LatteType sizeT = checkExpr(e->expr_);
-        if (sizeT != LatteType::Int())
-            fail("Array size must be int", 0);
-
-        return LatteType::Array(bt);
-    }
-
-    // new C
-    if (auto* e = dynamic_cast<ENewObj*>(expr))
-    {
-        std::string cname = e->ident_;
-        if (!env_.lookupClass(cname).has_value())
-            fail("Unknown class '" + cname + "'", 0);
-        return LatteType::Class(cname);
-    }
-
-    // e.f (field access)
-    if (auto* e = dynamic_cast<EField*>(expr))
-    {
-        LatteType objT = checkExpr6(e->expr_);
-        if (objT.kind != LatteTypeKind::Class)
-            fail("Field access requires class type", 0);
-
-        auto fi = env_.lookupField(objT.name, e->ident_);
-        if (!fi.has_value())
-            fail("Unknown field '" + std::string(e->ident_) + "' in class '" + objT.name + "'", 0);
-
-        return fi->type;
-    }
-
-    // e.m(args)
-    if (auto* e = dynamic_cast<EMethod*>(expr))
-    {
-        LatteType objT = checkExpr6(e->expr_);
-        if (objT.kind != LatteTypeKind::Class)
-            fail("Method call requires class type", 0);
-
-        auto mi = env_.lookupMethod(objT.name, e->ident_);
-        if (!mi.has_value())
-            fail("Unknown method '" + std::string(e->ident_) + "' in class '" + objT.name + "'", 0);
-
-        std::vector<LatteType> callArgs;
-        if (e->listexpr_)
-        {
-            for (Expr* a : *e->listexpr_)
-                callArgs.push_back(checkExpr(a));
-        }
-
-        if (callArgs.size() != mi->sig.args.size())
-            fail("Method '" + std::string(e->ident_) + "' called with wrong number of arguments", 0);
-
-        for (std::size_t i = 0; i < callArgs.size(); ++i)
-        {
-            if (!isAssignable(mi->sig.args[i], callArgs[i]))
-                fail("Method '" + std::string(e->ident_) + "': argument " + std::to_string(i + 1) + " has wrong type", 0);
-        }
-
-        return mi->sig.result;
-    }
-
-    // Ident (variable OR field in method)
-    if (auto* e = dynamic_cast<EVar*>(expr))
-    {
-        std::string name = e->ident_;
-        auto t = lookupVarOrFieldType(name);
-        if (!t.has_value())
-            fail("Use of undeclared identifier '" + name + "'", 0);
-        return *t;
-    }
-
-    if (dynamic_cast<ELitInt*>(expr))
-        return LatteType::Int();
-
-    if (dynamic_cast<ELitTrue*>(expr) || dynamic_cast<ELitFalse*>(expr))
-        return LatteType::Bool();
-
-    if (dynamic_cast<EString*>(expr))
-        return LatteType::String();
-
-    // f(args) — function call
-    if (auto* e = dynamic_cast<EApp*>(expr))
-    {
-        std::string fname = e->ident_;
-        auto finfo = env_.lookupFunction(fname);
-        if (!finfo.has_value())
-            fail("Call to undefined function '" + fname + "'", 0);
-
-        std::vector<LatteType> callArgTypes;
-        if (e->listexpr_)
-        {
-            for (Expr* a : *e->listexpr_)
-                callArgTypes.push_back(checkExpr(a));
-        }
-
-        if (callArgTypes.size() != finfo->args.size())
-            fail("Function '" + fname + "' called with wrong number of arguments", 0);
-
-        for (std::size_t i = 0; i < callArgTypes.size(); ++i)
-        {
-            if (!isAssignable(finfo->args[i], callArgTypes[i]))
-                fail("Function '" + fname + "': argument " + std::to_string(i + 1) + " has wrong type", 0);
-        }
-
-        return finfo->result;
-    }
-
-    fail("Unknown Expr6 kind (not handled in typechecker)", 0);
 }
 
 // ---------------- LVal ----------------
@@ -861,7 +680,7 @@ LatteType TypeChecker::checkLVal(LVal* lv)
 
     if (auto* f = dynamic_cast<LField*>(lv))
     {
-        LatteType objT = checkExpr6(f->expr_); // Expr6 "." Ident
+        LatteType objT = checkLVal(f->lval_); // Expr6 "." Ident
         if (objT.kind != LatteTypeKind::Class)
             fail("Field l-value requires class type", 0);
 
@@ -874,8 +693,8 @@ LatteType TypeChecker::checkLVal(LVal* lv)
 
     if (auto* idx = dynamic_cast<LIndex*>(lv))
     {
-        LatteType arrT = checkExpr6(idx->expr_1);
-        LatteType iT   = checkExpr(idx->expr_2);
+        LatteType arrT = checkLVal(idx->lval_);
+        LatteType iT   = checkExpr(idx->expr_);
 
         if (iT != LatteType::Int())
             fail("Array index must be int", 0);
@@ -921,7 +740,7 @@ LatteType TypeChecker::baseTypeFromAst(BaseType* bt)
     if (dynamic_cast<Str*>(bt))  return LatteType::String();
     if (dynamic_cast<Void*>(bt)) return LatteType::Void();
 
-    if (auto* c = dynamic_cast<classT*>(bt))
+    if (auto* c = dynamic_cast<ClassT*>(bt))
     {
         std::string cname = c->ident_;
         if (!env_.lookupClass(cname).has_value())

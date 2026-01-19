@@ -10,10 +10,10 @@
 #include "semantic/typecheck.h"
 #include "semantic/latte_error.h"
 
-#include "backend/ir.hpp"
-#include "backend/regalloc.hpp"
-#include "backend/x86_emit.hpp"
-#include "backend/codegen.hpp"
+#include "backend/ir.h"
+#include "backend/regalloc.h"
+#include "backend/x86_emit.h"
+#include "backend/codegen.h"
 
 ModuleIR buildModuleIR(Program* program);
 

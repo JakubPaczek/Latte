@@ -1,5 +1,5 @@
 #pragma once
 #include "frontend/Absyn.H"
-#include "backend/ir.hpp"
+#include "ir.h"
 
 ModuleIR buildModuleIR(Program* program);

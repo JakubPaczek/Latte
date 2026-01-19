@@ -1,4 +1,5 @@
 #include "env.h"
+#include <stdexcept>
 
 Env::Env()
 {

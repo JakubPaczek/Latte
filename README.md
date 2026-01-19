@@ -1,6 +1,11 @@
 2.0
 
 SetUp:
+(jeżeli nie ma bnfc)
+bnfc -m --cpp -o .\src\frontend .\src\LatteCPP.cf
+
+
+Wymagania
 (Uruchamiane na wsl ...) (x86_64?)
 GCC Compiler for C and C++
 Bison version >= 1.875
