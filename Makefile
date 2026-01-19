@@ -29,25 +29,48 @@ TARGET_X86_64 := latc_x86_64
 RUNTIME_SRC := $(LIB_DIR)/runtime.c
 RUNTIME_OBJ := $(LIB_DIR)/runtime.o
 
+# Detect MSYS/MinGW (even though OS=Windows_NT)
+ifneq (,$(findstring MSYS,$(MSYSTEM)))
+  FORCE_UNIX := 1
+endif
+ifneq (,$(findstring MINGW,$(MSYSTEM)))
+  FORCE_UNIX := 1
+endif
+ifneq (,$(findstring UCRT64,$(MSYSTEM)))
+  FORCE_UNIX := 1
+endif
+
 # -----------------------------
 # Platform helpers (Windows vs Unix)
 # -----------------------------
-ifeq ($(OS),Windows_NT)
-  RM        := del /Q
-  RMDIR     := rmdir /S /Q
-  COPY      := cp -f
-  MKDIR_P   := if not exist "$(LIB_DIR)" mkdir "$(LIB_DIR)"
-  NULLDEV   := NUL
-  EXEEXT    := .exe
+ifeq ($(FORCE_UNIX),1)
+  # treat as Unix shell tools
+  RM      := rm -f
+  RMDIR   := rm -rf
+  COPY    := cp -f
+  MKDIR_P := mkdir -p $(LIB_DIR)
+  NULLDEV := /dev/null
+  EXEEXT  :=
+  TARGET_WIN        := $(TARGET)
+  TARGET_X86_64_WIN := $(TARGET_X86_64)
+else ifeq ($(OS),Windows_NT)
+  # true cmd.exe environment (optional)
+  RM      := del /Q
+  RMDIR   := rmdir /S /Q
+  COPY    := cmd //C copy /Y
+  MKDIR_P := if not exist "$(LIB_DIR)" mkdir "$(LIB_DIR)"
+  NULLDEV := NUL
+  EXEEXT  := .exe
   TARGET_WIN        := $(TARGET)$(EXEEXT)
   TARGET_X86_64_WIN := $(TARGET_X86_64)$(EXEEXT)
 else
-  RM        := rm -f
-  RMDIR     := rm -rf
-  COPY      := cp -f
-  MKDIR_P   := mkdir -p $(LIB_DIR)
-  NULLDEV   := /dev/null
-  EXEEXT    :=
+  # Unix
+  RM      := rm -f
+  RMDIR   := rm -rf
+  COPY    := cp -f
+  MKDIR_P := mkdir -p $(LIB_DIR)
+  NULLDEV := /dev/null
+  EXEEXT  :=
   TARGET_WIN        := $(TARGET)
   TARGET_X86_64_WIN := $(TARGET_X86_64)
 endif
