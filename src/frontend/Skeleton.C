@@ -239,7 +239,7 @@ void Skeleton::visitTArr(TArr *t_arr)
 {
   /* Code For TArr Goes Here */
 
-  if (t_arr->basetype_) t_arr->basetype_->accept(this);
+  if (t_arr->type_) t_arr->type_->accept(this);
 
 }
 

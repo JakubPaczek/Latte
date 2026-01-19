@@ -213,7 +213,7 @@ ListItem : Item { $$ = new ListItem(); $$->push_back($1); }
   | Item _COMMA ListItem { $3->push_back($1); $$ = $3; }
 ;
 Type : BaseType { $$ = new TBase($1); }
-  | BaseType _LBRACK _RBRACK { $$ = new TArr($1); }
+  | Type _LBRACK _RBRACK { $$ = new TArr($1); }
   | _KW_void { $$ = new Void(); }
 ;
 BaseType : _KW_int { $$ = new Int(); }

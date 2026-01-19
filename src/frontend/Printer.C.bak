@@ -659,6 +659,19 @@ void PrintAbsyn::iterListType(ListType::const_iterator i, ListType::const_iterat
 
 void PrintAbsyn::visitExpr(Expr *p) {} //abstract class
 
+void PrintAbsyn::visitEParen(EParen *p)
+{
+  int oldi = _i_;
+  if (oldi > 7) render(_L_PAREN);
+
+  render('(');
+  _i_ = 0; p->expr_->accept(this);
+  render(')');
+
+  if (oldi > 7) render(_R_PAREN);
+  _i_ = oldi;
+}
+
 void PrintAbsyn::visitESelf(ESelf *p)
 {
   int oldi = _i_;
@@ -1538,6 +1551,17 @@ void ShowAbsyn::visitListType(ListType *listtype)
 
 void ShowAbsyn::visitExpr(Expr *p) {} //abstract class
 
+void ShowAbsyn::visitEParen(EParen *p)
+{
+  bufAppend('(');
+  bufAppend("EParen");
+  bufAppend(' ');
+  bufAppend('[');
+  if (p->expr_)  p->expr_->accept(this);
+  bufAppend(']');
+  bufAppend(' ');
+  bufAppend(')');
+}
 void ShowAbsyn::visitESelf(ESelf *p)
 {
   bufAppend("ESelf");

@@ -1129,15 +1129,15 @@ TBase *TBase::clone() const
 
 
 /********************   TArr    ********************/
-TArr::TArr(BaseType *p1)
+TArr::TArr(Type *p1)
 {
-  basetype_ = p1;
+  type_ = p1;
 
 }
 
 TArr::TArr(const TArr & other)
 {
-  basetype_ = other.basetype_->clone();
+  type_ = other.type_->clone();
 
 }
 
@@ -1150,13 +1150,13 @@ TArr &TArr::operator=(const TArr & other)
 
 void TArr::swap(TArr & other)
 {
-  std::swap(basetype_, other.basetype_);
+  std::swap(type_, other.type_);
 
 }
 
 TArr::~TArr()
 {
-  delete(basetype_);
+  delete(type_);
 
 }
 

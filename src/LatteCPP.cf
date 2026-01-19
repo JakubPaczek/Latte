@@ -68,7 +68,7 @@ ForEach.    Stmt ::= "for" "(" Type Ident ":" Expr ")" Stmt ;
 
 TBase.          Type ::= BaseType ;
 
-TArr.           Type ::= BaseType "[" "]" ; -- 1D arrays
+TArr.           Type ::= Type "[" "]" ; -- 1D arrays
 
 Int.            BaseType ::= "int" ;
 
