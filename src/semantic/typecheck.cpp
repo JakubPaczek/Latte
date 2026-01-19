@@ -176,7 +176,6 @@ void TypeChecker::collectSignatures(Program* program)
     // Zakładam: Env::getClassRef(name) -> ClassInfo& (referencja do wpisu w mapie).
     // Jeśli nie masz, powiedz — dam Ci minimalny patch do Env.
 
-#ifdef HAS_ENV_GETCLASSREF
     for (TopDef* td : *prog->listtopdef_)
     {
         if (auto* c = dynamic_cast<ClassDef*>(td))
@@ -276,7 +275,6 @@ void TypeChecker::collectSignatures(Program* program)
             }
         }
     }
-#endif
 }
 
 // ---------------- typecheck bodies ----------------
