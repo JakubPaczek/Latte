@@ -487,7 +487,7 @@ void PrintAbsyn::visitForEach(ForEach *p)
 
   render("for");
   render('(');
-  _i_ = 0; p->basetype_->accept(this);
+  _i_ = 0; p->dtype_->accept(this);
   visitIdent(p->ident_);
   render(':');
   _i_ = 0; p->expr_->accept(this);
@@ -1457,7 +1457,7 @@ void ShowAbsyn::visitForEach(ForEach *p)
   bufAppend("ForEach");
   bufAppend(' ');
   bufAppend('[');
-  if (p->basetype_)  p->basetype_->accept(this);
+  if (p->dtype_)  p->dtype_->accept(this);
   bufAppend(']');
   bufAppend(' ');
   visitIdent(p->ident_);

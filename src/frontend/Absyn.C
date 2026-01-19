@@ -940,9 +940,9 @@ SExp *SExp::clone() const
 
 
 /********************   ForEach    ********************/
-ForEach::ForEach(BaseType *p1, Ident p2, Expr *p3, Stmt *p4)
+ForEach::ForEach(DType *p1, Ident p2, Expr *p3, Stmt *p4)
 {
-  basetype_ = p1;
+  dtype_ = p1;
   ident_ = p2;
   expr_ = p3;
   stmt_ = p4;
@@ -951,7 +951,7 @@ ForEach::ForEach(BaseType *p1, Ident p2, Expr *p3, Stmt *p4)
 
 ForEach::ForEach(const ForEach & other)
 {
-  basetype_ = other.basetype_->clone();
+  dtype_ = other.dtype_->clone();
   ident_ = other.ident_;
   expr_ = other.expr_->clone();
   stmt_ = other.stmt_->clone();
@@ -967,7 +967,7 @@ ForEach &ForEach::operator=(const ForEach & other)
 
 void ForEach::swap(ForEach & other)
 {
-  std::swap(basetype_, other.basetype_);
+  std::swap(dtype_, other.dtype_);
   std::swap(ident_, other.ident_);
   std::swap(expr_, other.expr_);
   std::swap(stmt_, other.stmt_);
@@ -976,7 +976,7 @@ void ForEach::swap(ForEach & other)
 
 ForEach::~ForEach()
 {
-  delete(basetype_);
+  delete(dtype_);
   delete(expr_);
   delete(stmt_);
 

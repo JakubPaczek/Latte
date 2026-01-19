@@ -206,7 +206,7 @@ Stmt : _SEMI { $$ = new Empty(); }
   | _KW_if _LPAREN Expr _RPAREN Stmt _KW_else Stmt { $$ = new CondElse($3, $5, $7); }
   | _KW_while _LPAREN Expr _RPAREN Stmt { $$ = new While($3, $5); }
   | Expr _SEMI { $$ = new SExp($1); }
-  | _KW_for _LPAREN BaseType _IDENT_ _COLON Expr _RPAREN Stmt { $$ = new ForEach($3, $4, $6, $8); }
+  | _KW_for _LPAREN DType _IDENT_ _COLON Expr _RPAREN Stmt { $$ = new ForEach($3, $4, $6, $8); }
 ;
 Item : _IDENT_ { $$ = new NoInit($1); }
   | _IDENT_ _EQ Expr { $$ = new Init($1, $3); }

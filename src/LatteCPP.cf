@@ -62,7 +62,7 @@ While.      Stmt ::= "while" "(" Expr ")" Stmt ;
 
 SExp.       Stmt ::= Expr ";" ;
 
-ForEach.    Stmt ::= "for" "(" BaseType Ident ":" Expr ")" Stmt ;
+ForEach.    Stmt ::= "for" "(" DType Ident ":" Expr ")" Stmt ;
 
 -- Types
 

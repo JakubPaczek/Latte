@@ -621,14 +621,14 @@ public:
 class ForEach : public Stmt
 {
 public:
-  BaseType *basetype_;
+  DType *dtype_;
   Ident ident_;
   Expr *expr_;
   Stmt *stmt_;
 
   ForEach(const ForEach &);
   ForEach &operator=(const ForEach &);
-  ForEach(BaseType *p1, Ident p2, Expr *p3, Stmt *p4);
+  ForEach(DType *p1, Ident p2, Expr *p3, Stmt *p4);
   ~ForEach();
   virtual void accept(Visitor *v);
   virtual ForEach *clone() const;

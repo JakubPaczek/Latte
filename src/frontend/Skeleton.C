@@ -204,7 +204,7 @@ void Skeleton::visitForEach(ForEach *for_each)
 {
   /* Code For ForEach Goes Here */
 
-  if (for_each->basetype_) for_each->basetype_->accept(this);
+  if (for_each->dtype_) for_each->dtype_->accept(this);
   visitIdent(for_each->ident_);
   if (for_each->expr_) for_each->expr_->accept(this);
   if (for_each->stmt_) for_each->stmt_->accept(this);

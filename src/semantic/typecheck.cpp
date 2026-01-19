@@ -404,8 +404,8 @@ bool TypeChecker::checkBlock(Block* block, const LatteType& expectedReturn)
     {
         for (Stmt* s : *blk->liststmt_)
         {
-            bool r = checkStmt(s, expectedReturn);
-            if (!alwaysReturns && r) alwaysReturns = true;
+            if (alwaysReturns) break;              // <- KLUCZ
+            alwaysReturns = checkStmt(s, expectedReturn);
         }
     }
 
@@ -550,15 +550,31 @@ bool TypeChecker::checkStmt(Stmt* stmt, const LatteType& expectedReturn)
         LatteType condType = checkExpr(s->expr_);
         if (condType != LatteType::Bool())
             fail("Condition in 'while' must be boolean", 0);
-
+    
+        // constant folding: while(true)
+        if (auto cb = constBool(s->expr_))
+        {
+            if (*cb)
+            {
+                bool bodyRet = checkStmt(s->stmt_, expectedReturn);
+                return true; // while(true) never falls through (return OR infinite loop)
+            }
+            else
+            {
+                // while(false) never executes
+                (void)checkStmt(s->stmt_, expectedReturn);
+                return false;
+            }
+        }
+    
         (void)checkStmt(s->stmt_, expectedReturn);
         return false;
-    }
+    }    
 
     if (auto* s = dynamic_cast<ForEach*>(stmt))
     {
         LatteType iterT = checkExpr(s->expr_);
-        LatteType varT  = typeFromAst(s->basetype_);
+        LatteType varT  = dtypeFromAst(s->dtype_);
 
         // expr musi byc tablica
         if (iterT.kind != LatteTypeKind::Array || !iterT.elem)
