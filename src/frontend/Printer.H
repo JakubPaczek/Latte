@@ -79,28 +79,27 @@ class PrintAbsyn : public Visitor
   void visitLVar(LVar *p);
   void visitLField(LField *p);
   void visitLIndex(LIndex *p);
-  void visitLThis(LThis *p);
+  void visitLSelf(LSelf *p);
   void visitType(Type *p); /* abstract class */
   void visitTBase(TBase *p);
   void visitTArr(TArr *p);
+  void visitVoid(Void *p);
   void visitFun(Fun *p);
   void visitBaseType(BaseType *p); /* abstract class */
   void visitInt(Int *p);
   void visitStr(Str *p);
   void visitBool(Bool *p);
-  void visitVoid(Void *p);
   void visitClassT(ClassT *p);
   void visitListType(ListType *p);
   void iterListType(ListType::const_iterator i, ListType::const_iterator j);
   void visitExpr(Expr *p); /* abstract class */
-  void visitEThis(EThis *p);
+  void visitESelf(ESelf *p);
   void visitEParen(EParen *p);
   void visitENull(ENull *p);
   void visitECast(ECast *p);
   void visitEIndex(EIndex *p);
   void visitENewArr(ENewArr *p);
   void visitENewObj(ENewObj *p);
-  void visitENewObjCall(ENewObjCall *p);
   void visitEMethod(EMethod *p);
   void visitEField(EField *p);
   void visitEVar(EVar *p);
@@ -270,28 +269,27 @@ class ShowAbsyn : public Visitor
   void visitLVar(LVar *p);
   void visitLField(LField *p);
   void visitLIndex(LIndex *p);
-  void visitLThis(LThis *p);
+  void visitLSelf(LSelf *p);
   void visitType(Type *p); /* abstract class */
   void visitTBase(TBase *p);
   void visitTArr(TArr *p);
+  void visitVoid(Void *p);
   void visitFun(Fun *p);
   void visitBaseType(BaseType *p); /* abstract class */
   void visitInt(Int *p);
   void visitStr(Str *p);
   void visitBool(Bool *p);
-  void visitVoid(Void *p);
   void visitClassT(ClassT *p);
   void visitListType(ListType *p);
   void iterListType(ListType::const_iterator i, ListType::const_iterator j);
   void visitExpr(Expr *p); /* abstract class */
-  void visitEThis(EThis *p);
+  void visitESelf(ESelf *p);
   void visitEParen(EParen *p);
   void visitENull(ENull *p);
   void visitECast(ECast *p);
   void visitEIndex(EIndex *p);
   void visitENewArr(ENewArr *p);
   void visitENewObj(ENewObj *p);
-  void visitENewObjCall(ENewObjCall *p);
   void visitEMethod(EMethod *p);
   void visitEField(EField *p);
   void visitEVar(EVar *p);

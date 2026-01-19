@@ -56,7 +56,7 @@ LField.     LVal ::= LVal "." Ident ;
 
 LIndex.     LVal ::= LVal "[" Expr "]" ;
 
-LThis.      LVal ::= "this" ;
+LSelf.  LVal  ::= "self" ;
 
 Ret.        Stmt ::= "return" Expr ";" ;
 
@@ -84,9 +84,9 @@ Str.            BaseType ::= "string" ;
 
 Bool.           BaseType ::= "boolean" ;
 
-Void.           BaseType ::= "void" ;
-
 ClassT.         BaseType ::= Ident ;
+
+Void.           Type ::= "void" ;
 
 internal Fun.   Type ::= Type "(" [Type] ")" ;
 
@@ -94,7 +94,7 @@ separator       Type "," ;
 
 -- Expressions
 
-EThis.          Expr6 ::= "this" ;
+ESelf.          Expr6 ::= "self" ;
 
 EParen.         Expr6 ::= "(" Expr ")" ;
 
@@ -107,8 +107,6 @@ EIndex.         Expr6 ::= Expr6 "[" Expr "]" ;
 ENewArr.        Expr6 ::= "new" BaseType "[" Expr "]" ;
 
 ENewObj.        Expr6 ::= "new" Ident ;
-
-ENewObjCall.    Expr6 ::= "new" Ident "(" ")" ;
 
 EMethod.        Expr6 ::= Expr6 "." Ident "(" [Expr] ")" ;
 

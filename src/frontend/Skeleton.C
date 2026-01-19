@@ -254,9 +254,9 @@ void Skeleton::visitLIndex(LIndex *l_index)
 
 }
 
-void Skeleton::visitLThis(LThis *l_this)
+void Skeleton::visitLSelf(LSelf *l_self)
 {
-  /* Code For LThis Goes Here */
+  /* Code For LSelf Goes Here */
 
 
 }
@@ -274,6 +274,13 @@ void Skeleton::visitTArr(TArr *t_arr)
   /* Code For TArr Goes Here */
 
   if (t_arr->basetype_) t_arr->basetype_->accept(this);
+
+}
+
+void Skeleton::visitVoid(Void *void_)
+{
+  /* Code For Void Goes Here */
+
 
 }
 
@@ -307,13 +314,6 @@ void Skeleton::visitBool(Bool *bool_)
 
 }
 
-void Skeleton::visitVoid(Void *void_)
-{
-  /* Code For Void Goes Here */
-
-
-}
-
 void Skeleton::visitClassT(ClassT *class_t)
 {
   /* Code For ClassT Goes Here */
@@ -322,9 +322,9 @@ void Skeleton::visitClassT(ClassT *class_t)
 
 }
 
-void Skeleton::visitEThis(EThis *e_this)
+void Skeleton::visitESelf(ESelf *e_self)
 {
-  /* Code For EThis Goes Here */
+  /* Code For ESelf Goes Here */
 
 
 }
@@ -376,14 +376,6 @@ void Skeleton::visitENewObj(ENewObj *e_new_obj)
   /* Code For ENewObj Goes Here */
 
   visitIdent(e_new_obj->ident_);
-
-}
-
-void Skeleton::visitENewObjCall(ENewObjCall *e_new_obj_call)
-{
-  /* Code For ENewObjCall Goes Here */
-
-  visitIdent(e_new_obj_call->ident_);
 
 }
 

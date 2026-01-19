@@ -1222,42 +1222,42 @@ LIndex *LIndex::clone() const
 
 
 
-/********************   LThis    ********************/
-LThis::LThis()
+/********************   LSelf    ********************/
+LSelf::LSelf()
 {
 
 }
 
-LThis::LThis(const LThis & other)
+LSelf::LSelf(const LSelf & other)
 {
 
 }
 
-LThis &LThis::operator=(const LThis & other)
+LSelf &LSelf::operator=(const LSelf & other)
 {
-  LThis tmp(other);
+  LSelf tmp(other);
   swap(tmp);
   return *this;
 }
 
-void LThis::swap(LThis & other)
+void LSelf::swap(LSelf & other)
 {
 
 }
 
-LThis::~LThis()
+LSelf::~LSelf()
 {
 
 }
 
-void LThis::accept(Visitor *v)
+void LSelf::accept(Visitor *v)
 {
-  v->visitLThis(this);
+  v->visitLSelf(this);
 }
 
-LThis *LThis::clone() const
+LSelf *LSelf::clone() const
 {
-  return new LThis(*this);
+  return new LSelf(*this);
 }
 
 
@@ -1346,6 +1346,46 @@ void TArr::accept(Visitor *v)
 TArr *TArr::clone() const
 {
   return new TArr(*this);
+}
+
+
+
+/********************   Void    ********************/
+Void::Void()
+{
+
+}
+
+Void::Void(const Void & other)
+{
+
+}
+
+Void &Void::operator=(const Void & other)
+{
+  Void tmp(other);
+  swap(tmp);
+  return *this;
+}
+
+void Void::swap(Void & other)
+{
+
+}
+
+Void::~Void()
+{
+
+}
+
+void Void::accept(Visitor *v)
+{
+  v->visitVoid(this);
+}
+
+Void *Void::clone() const
+{
+  return new Void(*this);
 }
 
 
@@ -1518,46 +1558,6 @@ Bool *Bool::clone() const
 
 
 
-/********************   Void    ********************/
-Void::Void()
-{
-
-}
-
-Void::Void(const Void & other)
-{
-
-}
-
-Void &Void::operator=(const Void & other)
-{
-  Void tmp(other);
-  swap(tmp);
-  return *this;
-}
-
-void Void::swap(Void & other)
-{
-
-}
-
-Void::~Void()
-{
-
-}
-
-void Void::accept(Visitor *v)
-{
-  v->visitVoid(this);
-}
-
-Void *Void::clone() const
-{
-  return new Void(*this);
-}
-
-
-
 /********************   ClassT    ********************/
 ClassT::ClassT(Ident p1)
 {
@@ -1601,42 +1601,42 @@ ClassT *ClassT::clone() const
 
 
 
-/********************   EThis    ********************/
-EThis::EThis()
+/********************   ESelf    ********************/
+ESelf::ESelf()
 {
 
 }
 
-EThis::EThis(const EThis & other)
+ESelf::ESelf(const ESelf & other)
 {
 
 }
 
-EThis &EThis::operator=(const EThis & other)
+ESelf &ESelf::operator=(const ESelf & other)
 {
-  EThis tmp(other);
+  ESelf tmp(other);
   swap(tmp);
   return *this;
 }
 
-void EThis::swap(EThis & other)
+void ESelf::swap(ESelf & other)
 {
 
 }
 
-EThis::~EThis()
+ESelf::~ESelf()
 {
 
 }
 
-void EThis::accept(Visitor *v)
+void ESelf::accept(Visitor *v)
 {
-  v->visitEThis(this);
+  v->visitESelf(this);
 }
 
-EThis *EThis::clone() const
+ESelf *ESelf::clone() const
 {
-  return new EThis(*this);
+  return new ESelf(*this);
 }
 
 
@@ -1908,49 +1908,6 @@ void ENewObj::accept(Visitor *v)
 ENewObj *ENewObj::clone() const
 {
   return new ENewObj(*this);
-}
-
-
-
-/********************   ENewObjCall    ********************/
-ENewObjCall::ENewObjCall(Ident p1)
-{
-  ident_ = p1;
-
-}
-
-ENewObjCall::ENewObjCall(const ENewObjCall & other)
-{
-  ident_ = other.ident_;
-
-}
-
-ENewObjCall &ENewObjCall::operator=(const ENewObjCall & other)
-{
-  ENewObjCall tmp(other);
-  swap(tmp);
-  return *this;
-}
-
-void ENewObjCall::swap(ENewObjCall & other)
-{
-  std::swap(ident_, other.ident_);
-
-}
-
-ENewObjCall::~ENewObjCall()
-{
-
-}
-
-void ENewObjCall::accept(Visitor *v)
-{
-  v->visitENewObjCall(this);
-}
-
-ENewObjCall *ENewObjCall::clone() const
-{
-  return new ENewObjCall(*this);
 }
 
 

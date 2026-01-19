@@ -54,7 +54,7 @@ class Decr;
 class LVar;
 class LField;
 class LIndex;
-class LThis;
+class LSelf;
 class Ret;
 class VRet;
 class Cond;
@@ -67,17 +67,16 @@ class TArr;
 class Int;
 class Str;
 class Bool;
-class Void;
 class ClassT;
+class Void;
 class Fun;
-class EThis;
+class ESelf;
 class EParen;
 class ENull;
 class ECast;
 class EIndex;
 class ENewArr;
 class ENewObj;
-class ENewObjCall;
 class EMethod;
 class EField;
 class EVar;
@@ -151,7 +150,7 @@ public:
   virtual void visitLVar(LVar *p) = 0;
   virtual void visitLField(LField *p) = 0;
   virtual void visitLIndex(LIndex *p) = 0;
-  virtual void visitLThis(LThis *p) = 0;
+  virtual void visitLSelf(LSelf *p) = 0;
   virtual void visitRet(Ret *p) = 0;
   virtual void visitVRet(VRet *p) = 0;
   virtual void visitCond(Cond *p) = 0;
@@ -164,17 +163,16 @@ public:
   virtual void visitInt(Int *p) = 0;
   virtual void visitStr(Str *p) = 0;
   virtual void visitBool(Bool *p) = 0;
-  virtual void visitVoid(Void *p) = 0;
   virtual void visitClassT(ClassT *p) = 0;
+  virtual void visitVoid(Void *p) = 0;
   virtual void visitFun(Fun *p) = 0;
-  virtual void visitEThis(EThis *p) = 0;
+  virtual void visitESelf(ESelf *p) = 0;
   virtual void visitEParen(EParen *p) = 0;
   virtual void visitENull(ENull *p) = 0;
   virtual void visitECast(ECast *p) = 0;
   virtual void visitEIndex(EIndex *p) = 0;
   virtual void visitENewArr(ENewArr *p) = 0;
   virtual void visitENewObj(ENewObj *p) = 0;
-  virtual void visitENewObjCall(ENewObjCall *p) = 0;
   virtual void visitEMethod(EMethod *p) = 0;
   virtual void visitEField(EField *p) = 0;
   virtual void visitEVar(EVar *p) = 0;
@@ -714,17 +712,17 @@ public:
   void swap(LIndex &);
 };
 
-class LThis : public LVal
+class LSelf : public LVal
 {
 public:
 
-  LThis(const LThis &);
-  LThis &operator=(const LThis &);
-  LThis();
-  ~LThis();
+  LSelf(const LSelf &);
+  LSelf &operator=(const LSelf &);
+  LSelf();
+  ~LSelf();
   virtual void accept(Visitor *v);
-  virtual LThis *clone() const;
-  void swap(LThis &);
+  virtual LSelf *clone() const;
+  void swap(LSelf &);
 };
 
 class TBase : public Type
@@ -753,6 +751,19 @@ public:
   virtual void accept(Visitor *v);
   virtual TArr *clone() const;
   void swap(TArr &);
+};
+
+class Void : public Type
+{
+public:
+
+  Void(const Void &);
+  Void &operator=(const Void &);
+  Void();
+  ~Void();
+  virtual void accept(Visitor *v);
+  virtual Void *clone() const;
+  void swap(Void &);
 };
 
 class Fun : public Type
@@ -809,19 +820,6 @@ public:
   void swap(Bool &);
 };
 
-class Void : public BaseType
-{
-public:
-
-  Void(const Void &);
-  Void &operator=(const Void &);
-  Void();
-  ~Void();
-  virtual void accept(Visitor *v);
-  virtual Void *clone() const;
-  void swap(Void &);
-};
-
 class ClassT : public BaseType
 {
 public:
@@ -836,17 +834,17 @@ public:
   void swap(ClassT &);
 };
 
-class EThis : public Expr
+class ESelf : public Expr
 {
 public:
 
-  EThis(const EThis &);
-  EThis &operator=(const EThis &);
-  EThis();
-  ~EThis();
+  ESelf(const ESelf &);
+  ESelf &operator=(const ESelf &);
+  ESelf();
+  ~ESelf();
   virtual void accept(Visitor *v);
-  virtual EThis *clone() const;
-  void swap(EThis &);
+  virtual ESelf *clone() const;
+  void swap(ESelf &);
 };
 
 class EParen : public Expr
@@ -933,20 +931,6 @@ public:
   virtual void accept(Visitor *v);
   virtual ENewObj *clone() const;
   void swap(ENewObj &);
-};
-
-class ENewObjCall : public Expr
-{
-public:
-  Ident ident_;
-
-  ENewObjCall(const ENewObjCall &);
-  ENewObjCall &operator=(const ENewObjCall &);
-  ENewObjCall(Ident p1);
-  ~ENewObjCall();
-  virtual void accept(Visitor *v);
-  virtual ENewObjCall *clone() const;
-  void swap(ENewObjCall &);
 };
 
 class EMethod : public Expr
