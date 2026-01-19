@@ -44,15 +44,15 @@ struct LatteType {
         return !(*this == other);
     }
 
-    static LatteType Int()      { return { LatteTypeKind::Int }; }
-    static LatteType Bool()     { return { LatteTypeKind::Bool }; }
-    static LatteType String()   { return { LatteTypeKind::String }; }
-    static LatteType Void()     { return { LatteTypeKind::Void }; }
-    static LatteType Unknown()  { return { LatteTypeKind::Unknown }; }
+    static LatteType Int()     { return LatteType(LatteTypeKind::Int); }
+    static LatteType Bool()    { return LatteType(LatteTypeKind::Bool); }
+    static LatteType String()  { return LatteType(LatteTypeKind::String); }
+    static LatteType Void()    { return LatteType(LatteTypeKind::Void); }
+    static LatteType Unknown() { return LatteType(LatteTypeKind::Unknown); }
 
     static LatteType Class(std::string n)
     {
-        LatteType t;
+        LatteType t(LatteTypeKind::Class);
         t.kind = LatteTypeKind::Class;
         t.name = std::move(n);
         return t;
@@ -60,7 +60,7 @@ struct LatteType {
 
     static LatteType Array(LatteType element)
     {
-        LatteType t;
+        LatteType t(LatteTypeKind::Array);
         t.kind = LatteTypeKind::Array;
         t.elem = std::make_shared<LatteType>(std::move(element));
         return t;
@@ -68,9 +68,7 @@ struct LatteType {
 
     static LatteType Null()
     {
-        LatteType t;
-        t.kind = LatteTypeKind::Null;
-        return t;
+        return LatteType(LatteTypeKind::Null);
     }
 
     bool isRef() const noexcept
