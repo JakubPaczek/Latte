@@ -131,6 +131,9 @@ LatteType TypeChecker::dtypeFromAst(DType* ty)
 {
     if (!ty) return LatteType::Unknown();
 
+    if (dynamic_cast<DVoid*>(ty))
+    return LatteType::Void();
+
     if (auto* b = dynamic_cast<DTypeBase*>(ty))
         return baseTypeFromAst(b->basetype_);
 
