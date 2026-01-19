@@ -586,21 +586,19 @@ LatteType TypeChecker::checkExpr(Expr* expr)
     if (auto* e = dynamic_cast<EParen*>(expr))
         return checkExpr(e->expr_);
 
-    // int literal
-    if (dynamic_cast<ELitInt*>(expr))
-        return LatteType::Int();
-
-    // bool literal
-    if (dynamic_cast<ELitTrue*>(expr) || dynamic_cast<ELitFalse*>(expr))
-        return LatteType::Bool();
-
-    // string literal
-    if (dynamic_cast<EString*>(expr))
-        return LatteType::String();
-
     // null
     if (dynamic_cast<ENull*>(expr))
         return LatteType::Null();
+
+    // int / bool / string literals
+    if (dynamic_cast<ELitInt*>(expr))
+        return LatteType::Int();
+
+    if (dynamic_cast<ELitTrue*>(expr) || dynamic_cast<ELitFalse*>(expr))
+        return LatteType::Bool();
+
+    if (dynamic_cast<EString*>(expr))
+        return LatteType::String();
 
     // variable
     if (auto* e = dynamic_cast<EVar*>(expr))
@@ -632,12 +630,140 @@ LatteType TypeChecker::checkExpr(Expr* expr)
         for (size_t i = 0; i < actuals.size(); ++i)
         {
             if (!isAssignable(finfo->args[i], actuals[i]))
-                fail("Type mismatch in argument " + std::to_string(i+1) +
+                fail("Type mismatch in argument " + std::to_string(i + 1) +
                      " of call to '" + fname + "'", 0);
         }
 
         return finfo->result;
     }
+
+    // --- Arrays ---
+
+    // new BaseType[Expr]
+    if (auto* e = dynamic_cast<ENewArr*>(expr))
+    {
+        LatteType sizeT = checkExpr(e->expr_);
+        if (sizeT != LatteType::Int())
+            fail("Array size must be int", 0);
+
+        LatteType elemT = baseTypeFromAst(e->basetype_);
+        if (elemT.kind == LatteTypeKind::Void)
+            fail("void[] is not allowed", 0);
+
+        return LatteType::Array(elemT);
+    }
+
+    // Expr6[Expr]
+    if (auto* e = dynamic_cast<EIndex*>(expr))
+    {
+        LatteType arrT = checkExpr(e->expr_1);
+        LatteType idxT = checkExpr(e->expr_2);
+
+        if (idxT != LatteType::Int())
+            fail("Array index must be int", 0);
+
+        if (arrT.kind != LatteTypeKind::Array || !arrT.elem)
+            fail("Indexing requires array type", 0);
+
+        return *arrT.elem;
+    }
+
+    // --- Objects / Structs ---
+
+    // new Ident
+    if (auto* e = dynamic_cast<ENewObj*>(expr))
+    {
+        std::string cname = e->ident_;
+        if (!env_.lookupClass(cname).has_value())
+            fail("Unknown class type '" + cname + "'", 0);
+
+        return LatteType::Class(cname);
+    }
+
+    // Expr6 . Ident  (field access)
+    if (auto* e = dynamic_cast<EField*>(expr))
+    {
+        LatteType objT = checkExpr(e->expr_);
+        if (objT.kind != LatteTypeKind::Class)
+            fail("Field access requires class type", 0);
+
+        auto fi = env_.lookupField(objT.name, e->ident_);
+        if (!fi.has_value())
+            fail("Unknown field '" + std::string(e->ident_) + "' in class '" + objT.name + "'", 0);
+
+        return fi->type;
+    }
+
+    // Expr6 . Ident ( [Expr] )  (method call)
+    if (auto* e = dynamic_cast<EMethod*>(expr))
+    {
+        LatteType objT = checkExpr(e->expr_);
+        if (objT.kind != LatteTypeKind::Class)
+            fail("Method call requires class type", 0);
+
+        std::string mname = e->ident_;
+        auto mi = env_.lookupMethod(objT.name, mname);
+        if (!mi.has_value())
+            fail("Unknown method '" + mname + "' in class '" + objT.name + "'", 0);
+
+        std::vector<LatteType> actuals;
+        if (e->listexpr_)
+        {
+            for (Expr* a : *e->listexpr_)
+                actuals.push_back(checkExpr(a));
+        }
+
+        if (actuals.size() != mi->sig.args.size())
+            fail("Wrong number of arguments in call to method '" + mname + "'", 0);
+
+        for (size_t i = 0; i < actuals.size(); ++i)
+        {
+            if (!isAssignable(mi->sig.args[i], actuals[i]))
+                fail("Type mismatch in argument " + std::to_string(i + 1) +
+                     " of call to method '" + mname + "'", 0);
+        }
+
+        return mi->sig.result;
+    }
+
+    // --- Casts ( (Type) Expr6 ) ---
+    // W Twojej gramatyce jest ECast, więc minimalnie obsłuż:
+    // - cast do typu referencyjnego z null
+    // - cast w dół/górę w hierarchii klas (jeśli chcesz dopuścić)
+    // Jeśli nie chcesz wspierać castów teraz, lepiej dać czytelny błąd,
+    // ale testy extensions mogą to wykorzystywać.
+    if (auto* e = dynamic_cast<ECast*>(expr))
+    {
+        LatteType dst = typeFromAst(e->type_);
+        LatteType src = checkExpr(e->expr_);
+
+        // null -> dowolny ref
+        if (src.kind == LatteTypeKind::Null && dst.isRef())
+            return dst;
+
+        // klasy: pozwalamy na cast w obrębie hierarchii (w górę i w dół),
+        // ale tylko jeśli istnieje relacja dziedziczenia w którąś stronę.
+        if (dst.kind == LatteTypeKind::Class && src.kind == LatteTypeKind::Class)
+        {
+            if (isSubClassOf(src.name, dst.name) || isSubClassOf(dst.name, src.name))
+                return dst;
+            fail("Invalid cast between unrelated class types", 0);
+        }
+
+        // tablice: dopuszczamy tylko identyczny typ (bez kowariancji)
+        if (dst.kind == LatteTypeKind::Array && src.kind == LatteTypeKind::Array)
+        {
+            if (dst == src) return dst;
+            fail("Invalid cast between different array types", 0);
+        }
+
+        // prymitywy: tylko identyczny typ
+        if (dst == src) return dst;
+
+        fail("Invalid cast", 0);
+    }
+
+    // --- Boolean / arithmetic / relational ops ---
 
     // EOr
     if (auto* e = dynamic_cast<EOr*>(expr))
@@ -668,7 +794,7 @@ LatteType TypeChecker::checkExpr(Expr* expr)
 
         if (dynamic_cast<EQU*>(op) || dynamic_cast<NE*>(op))
         {
-            // == / != : dopuszczamy: identyczne typy, albo null vs ref
+            // == / != : identyczne typy, albo null vs ref
             if (t1 == t2) return LatteType::Bool();
             if ((t1.kind == LatteTypeKind::Null && t2.isRef()) ||
                 (t2.kind == LatteTypeKind::Null && t1.isRef()))
@@ -718,20 +844,18 @@ LatteType TypeChecker::checkExpr(Expr* expr)
         return LatteType::Int();
     }
 
-    // Neg / Not są Expr5, ale checkExpr dostaje Expr (po coercions) — BNFC generuje klasy też jako Expr,
-    // więc łapiemy je normalnie:
+    // Neg / Not
     if (auto* e = dynamic_cast<Neg*>(expr))
     {
         LatteType t = checkExpr(e->expr_);
-
         if (t != LatteType::Int())
             fail("Unary '-' expects int operand", 0);
         return LatteType::Int();
     }
+
     if (auto* e = dynamic_cast<Not*>(expr))
     {
         LatteType t = checkExpr(e->expr_);
-
         if (t != LatteType::Bool())
             fail("Logical '!' expects boolean operand", 0);
         return LatteType::Bool();
