@@ -13,8 +13,8 @@ TypeChecker::TypeChecker()
 
 static Expr* stripWrappers(Expr* e) {
     while (true) {
-        if (auto* a = dynamic_cast<EAtom*>(e))  { e = a->expr_; continue; }
-        if (auto* p = dynamic_cast<EParen*>(e)) { e = p->expr_; continue; }
+        if (auto* a = dynamic_cast<EAtom*>(e))  { e = a->expr_; continue; } // unwrap bnfc "atom" node
+        if (auto* p = dynamic_cast<EParen*>(e)) { e = p->expr_; continue; } // unwrap parentheses node
         return e;
     }
 }
@@ -26,13 +26,13 @@ void TypeChecker::checkProgram(Program* program)
     auto* prog = dynamic_cast<Prog*>(program);
     if (!prog) fail("Unexpected Program node", 0);
 
-    // Pass 1: klasy (nagłówki)
+    // pass 1: collect class names + base links (no members yet)
     collectClassHeaders(program);
 
-    // Pass 2: sygnatury funkcji + pól/metod w klasach
+    // pass 2: collect signatures (functions, fields, methods) into env
     collectSignatures(program);
 
-    // Sprawdź main
+    // check presence and signature of main()
     auto mainFun = env_.lookupFunction("main");
     if (!mainFun.has_value())
         fail("No function 'main' defined", 0);
@@ -40,14 +40,14 @@ void TypeChecker::checkProgram(Program* program)
     if (mainFun->result != LatteType::Int() || !mainFun->args.empty())
         fail("Function 'main' must have type 'int' and no parameters", 0);
 
-    // Pass 3: typecheck ciał funkcji top-level
+    // pass 3: typecheck bodies of top-level functions
     for (TopDef* td : *prog->listtopdef_)
     {
         if (auto* fn = dynamic_cast<FnDef*>(td))
             checkTopLevelFunction(fn);
     }
 
-    // Pass 4: typecheck ciał metod w klasach
+    // pass 4: typecheck bodies of methods inside classes
     checkClassBodies(program);
 }
 
@@ -55,31 +55,31 @@ void TypeChecker::checkProgram(Program* program)
 
 void TypeChecker::collectPredefinedFunctions()
 {
-    {
+    { // printInt(int) : void
         FunInfo f;
         f.result = LatteType::Void();
         f.args = { LatteType::Int() };
         env_.enterFunction("printInt", f);
     }
-    {
+    { // printString(string) : void
         FunInfo f;
         f.result = LatteType::Void();
         f.args = { LatteType::String() };
         env_.enterFunction("printString", f);
     }
-    {
+    { // error() : void
         FunInfo f;
         f.result = LatteType::Void();
         f.args = {};
         env_.enterFunction("error", f);
     }
-    {
+    { // readInt() : int
         FunInfo f;
         f.result = LatteType::Int();
         f.args = {};
         env_.enterFunction("readInt", f);
     }
-    {
+    { // readString() : string
         FunInfo f;
         f.result = LatteType::String();
         f.args = {};
@@ -94,6 +94,7 @@ void TypeChecker::collectClassHeaders(Program* program)
     auto* prog = dynamic_cast<Prog*>(program);
     if (!prog) fail("Unexpected Program node in collectClassHeaders", 0);
 
+    // pass 1: register all class names (for future extends validation)
     for (TopDef* td : *prog->listtopdef_)
     {
         if (auto* c = dynamic_cast<ClassDef*>(td))
@@ -108,7 +109,7 @@ void TypeChecker::collectClassHeaders(Program* program)
         else if (auto* ce = dynamic_cast<ClassExt*>(td))
         {
             ClassInfo ci;
-            ci.name = ce->ident_1;      // class X extends Y
+            ci.name = ce->ident_1; // class X extends Y
             ci.base = ce->ident_2;
 
             if (!env_.tryEnterClass(ci))
@@ -116,7 +117,7 @@ void TypeChecker::collectClassHeaders(Program* program)
         }
     }
 
-    // weryfikacja "extends": baza musi istnieć (jeśli jest)
+    // pass 2: validate that base class exists
     for (TopDef* td : *prog->listtopdef_)
     {
         if (auto* ce = dynamic_cast<ClassExt*>(td))
@@ -133,7 +134,7 @@ LatteType TypeChecker::dtypeFromAst(DType* ty)
     if (!ty) return LatteType::Unknown();
 
     if (dynamic_cast<DVoid*>(ty))
-    return LatteType::Void();
+        return LatteType::Void(); // "void" only allowed as return type
 
     if (auto* b = dynamic_cast<DTypeBase*>(ty))
         return baseTypeFromAst(b->basetype_);

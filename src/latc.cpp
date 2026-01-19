@@ -12,14 +12,14 @@
 
 int main(int argc, char* argv[])
 {
-    if (argc != 2)
+    if (argc != 2) // input file path only
     {
         std::cerr << "ERROR\n";
         std::cerr << "Usage: " << argv[0] << " <source-file>\n";
         return 1;
     }
 
-    const char* filename = argv[1];
+    const char* filename = argv[1]; // input path
     FILE* input = std::fopen(filename, "r");
     if (!input)
     {
@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    Program* program = pProgram(input);
+    Program* program = pProgram(input); // parse whole file into ast root
     std::fclose(input);
 
     if (!program)
@@ -40,21 +40,21 @@ int main(int argc, char* argv[])
 
     try
     {
-        // frontend
-        TypeChecker checker;
+        // frontend // run semantic checks after parsing
+        TypeChecker checker; // typechecker instance (env/state)
         checker.checkProgram(program);
 
         std::cerr << "OK\n";
         return 0;
     }
-    catch (const LatteError& e)
+    catch (const LatteError& e) // expected semantic errors with source location
     {
         std::cerr << "ERROR\n";
         if (e.line() > 0) std::cerr << "Line " << e.line() << ": ";
         std::cerr << e.what() << "\n";
         return 1;
     }
-    catch (const std::exception& e)
+    catch (const std::exception& e) // unexpected internal errors
     {
         std::cerr << "ERROR\n";
         std::cerr << "Internal error: " << e.what() << "\n";
