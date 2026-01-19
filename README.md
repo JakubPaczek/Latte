@@ -1,19 +1,24 @@
-2.0
+# Latte compiler
 
-SetUp:
-(jeżeli nie ma bnfc)
-bnfc -m --cpp -o .\src\frontend .\src\LatteCPP.cf
+## Wymagane narzędzia (uruchamiane na WSL):
+- `g++` (C++17) + `gcc`  
+- `make`  
+- BNFC (tylko przy ponownym generowaniu plików z `.cf`)  
+- Bison >= 1.875  
+- Flex  >= 2.5.4
 
+## SetUp:
+(jeżeli nie ma bnfc)  
+bnfc -m --cpp -o .\src\frontend .\src\LatteCPP.cf  
+make  
+Gotowe pliki  
+- latc.exe  
+- lat_x86_64.exe
 
-Wymagania
-(Uruchamiane na wsl ...) (x86_64?)
-GCC Compiler for C and C++
-Bison version >= 1.875
-Flex version >= 2.5.4
-
-Źródła:
-https://bnfc.digitalgrammars.com/tutorial/bnfc-tutorial.html
-https://www.mimuw.edu.pl/~ben/Zajecia/Mrj2025/Latte/
+## Źródła:
+https://bnfc.digitalgrammars.com/tutorial/bnfc-tutorial.html  
+https://www.mimuw.edu.pl/~ben/Zajecia/Mrj2025/Latte/  
+https://bnfc.readthedocs.io/en/latest/lbnf.html
 
 
 
