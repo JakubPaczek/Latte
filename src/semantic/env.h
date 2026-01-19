@@ -16,7 +16,7 @@ enum class LatteTypeKind {
 
     // extensions
     Class,  // Ident
-    Array,  // T[]
+    Array,  // T[] 1d array type
     Null    // null
 };
 
@@ -45,6 +45,7 @@ struct LatteType {
         return !(*this == other);
     }
 
+    // constructors for common types
     static LatteType Int()     { return LatteType(LatteTypeKind::Int); }
     static LatteType Bool()    { return LatteType(LatteTypeKind::Bool); }
     static LatteType String()  { return LatteType(LatteTypeKind::String); }
@@ -61,17 +62,18 @@ struct LatteType {
     static LatteType Array(LatteType element)
     {
         LatteType t(LatteTypeKind::Array);
-        t.elem = std::make_shared<LatteType>(std::move(element));
+        t.elem = std::make_shared<LatteType>(std::move(element)); // heap store for recursion
         return t;
     }
 
     static LatteType Null()
     {
-        return LatteType(LatteTypeKind::Null);
+        return LatteType(LatteTypeKind::Null); // null literal type
     }
 
     bool isRef() const noexcept
     {
+        // string is treated like a reference for null/equality rules
         return kind == LatteTypeKind::String
             || kind == LatteTypeKind::Class
             || kind == LatteTypeKind::Array;
@@ -79,30 +81,30 @@ struct LatteType {
 };
 
 struct VarInfo {
-    LatteType type;
+    LatteType type; // variable static type
 };
 
 struct FunInfo {
-    LatteType result;
+    LatteType result; // return type
     std::vector<LatteType> args;
 };
 
 // classes
 struct FieldInfo {
-    LatteType type;
+    LatteType type; // field type
     int index = -1; // backend offset / index
 };
 
 struct MethodInfo {
-    FunInfo sig;
-    int index = -1; // FIX: default shouldn't be 1
+    FunInfo sig; // return type + arg types
+    int index = -1;
 };
 
 struct ClassInfo {
-    std::string name;
-    std::optional<std::string>  base; // "extends"
-    std::unordered_map<std::string, FieldInfo> fields;
-    std::unordered_map<std::string, MethodInfo> methods;
+    std::string name; // class name
+    std::optional<std::string>  base; // optional base class name
+    std::unordered_map<std::string, FieldInfo> fields; // fields by name
+    std::unordered_map<std::string, MethodInfo> methods; // methods by name
 };
 
 // env

@@ -7,62 +7,63 @@
 Env::Env()
 {
     // global scope for variables
-    pushScope();
+    pushScope(); // start with one scope
 }
 
 // functions
 void Env::enterFunction(const std::string& name, const FunInfo& info)
 {
-    globalFunctions_[name] = info;
+    globalFunctions_[name] = info; // insert or overwrite (no duplicate check)
 }
 
 bool Env::tryEnterFunction(const std::string& name, const FunInfo& info)
 {
-    return globalFunctions_.emplace(name, info).second;
+    return globalFunctions_.emplace(name, info).second; // insert only if not present
 }
 
 std::optional<FunInfo> Env::lookupFunction(const std::string& name) const
 {
     auto it = globalFunctions_.find(name);
     if (it == globalFunctions_.end())
-        return std::nullopt;
+        return std::nullopt; // not found
     return it->second;
 }
 
 // scopes
 void Env::pushScope()
 {
-    scopes_.emplace_back();
+    scopes_.emplace_back(); // new empty map: name -> VarInfo
 }
 
 void Env::popScope()
 {
     if (!scopes_.empty())
-        scopes_.pop_back();
+        scopes_.pop_back(); // drop locals from this scope
 }
 
 void Env::declareVar(const std::string& name, const VarInfo& info)
 {
     if (scopes_.empty())
-        pushScope();
+        pushScope(); // safety
     scopes_.back()[name] = info;
 }
 
 bool Env::tryDeclareVar(const std::string& name, const VarInfo& info)
 {
     if (scopes_.empty())
-        pushScope();
+        pushScope(); // safety
     auto& cur = scopes_.back();
     return cur.emplace(name, info).second;
 }
 
 std::optional<VarInfo> Env::lookupVar(const std::string& name) const
 {
+    // search from innermost scope to outermost scope
     for (auto it = scopes_.rbegin(); it != scopes_.rend(); ++it)
     {
         auto found = it->find(name);
         if (found != it->end())
-            return found->second;
+            return found->second; // first match wins (shadowing)
     }
     return std::nullopt;
 }
@@ -72,13 +73,13 @@ bool Env::isVarDeclaredInCurrentScope(const std::string& name) const
     if (scopes_.empty())
         return false;
     const auto& current = scopes_.back();
-    return current.find(name) != current.end();
+    return current.find(name) != current.end();// only checks top scope
 }
 
 // classes
 bool Env::tryEnterClass(const ClassInfo& c)
 {
-    return classes_.emplace(c.name, c).second;
+    return classes_.emplace(c.name, c).second; // insert only if not present
 }
 
 std::optional<ClassInfo> Env::lookupClass(const std::string& name) const
@@ -109,7 +110,7 @@ std::optional<FieldInfo> Env::lookupField(const std::string& className, const st
     const ClassInfo* cur = getClassPtr(className);
     if (!cur) return std::nullopt;
 
-    std::unordered_map<std::string, bool> seen;
+    std::unordered_map<std::string, bool> seen; // cycle detection during base traversal
 
     while (cur)
     {
@@ -120,8 +121,8 @@ std::optional<FieldInfo> Env::lookupField(const std::string& className, const st
         auto fit = cur->fields.find(fieldName);
         if (fit != cur->fields.end()) return fit->second;
 
-        if (!cur->base) break;
-        cur = getClassPtr(*cur->base);
+        if (!cur->base) break; // no parent
+        cur = getClassPtr(*cur->base); // walk to base class
         if (!cur) break;
     }
     return std::nullopt;
@@ -132,7 +133,7 @@ std::optional<MethodInfo> Env::lookupMethod(const std::string& className, const 
     const ClassInfo* cur = getClassPtr(className);
     if (!cur) return std::nullopt;
 
-    std::unordered_map<std::string, bool> seen;
+    std::unordered_map<std::string, bool> seen; // cycle detection
 
     while (cur)
     {
@@ -157,7 +158,7 @@ int Env::countAllFields(const std::string& className) const
     if (!cur) return 0;
 
     int total = 0;
-    std::unordered_map<std::string, bool> seen;
+    std::unordered_map<std::string, bool> seen; // cycle detection
 
     while (cur)
     {
@@ -180,7 +181,7 @@ int Env::countAllMethods(const std::string& className) const
     if (!cur) return 0;
 
     int total = 0;
-    std::unordered_map<std::string, bool> seen;
+    std::unordered_map<std::string, bool> seen; // cycle detection
 
     while (cur)
     {
@@ -203,7 +204,7 @@ bool Env::hasFieldInBases(const std::string& className, const std::string& field
     const ClassInfo* cur = getClassPtr(className);
     if (!cur || !cur->base) return false;
 
-    std::unordered_map<std::string, bool> seen;
+    std::unordered_map<std::string, bool> seen; // cycle detection
 
     cur = getClassPtr(*cur->base);
     while (cur)
@@ -226,7 +227,7 @@ bool Env::hasMethodInBases(const std::string& className, const std::string& meth
     const ClassInfo* cur = getClassPtr(className);
     if (!cur || !cur->base) return false;
 
-    std::unordered_map<std::string, bool> seen;
+    std::unordered_map<std::string, bool> seen; // cycle detection
 
     cur = getClassPtr(*cur->base);
     while (cur)
