@@ -74,17 +74,18 @@ class ESelf;
 class EParen;
 class ENull;
 class ECast;
-class EIndex;
 class ENewArr;
 class ENewObj;
-class EMethod;
-class EField;
 class EVar;
 class ELitInt;
 class ELitTrue;
 class ELitFalse;
-class EApp;
 class EString;
+class EApp;
+class EPrim;
+class EIndex;
+class EMethod;
+class EField;
 class Neg;
 class Not;
 class EMul;
@@ -170,17 +171,18 @@ public:
   virtual void visitEParen(EParen *p) = 0;
   virtual void visitENull(ENull *p) = 0;
   virtual void visitECast(ECast *p) = 0;
-  virtual void visitEIndex(EIndex *p) = 0;
   virtual void visitENewArr(ENewArr *p) = 0;
   virtual void visitENewObj(ENewObj *p) = 0;
-  virtual void visitEMethod(EMethod *p) = 0;
-  virtual void visitEField(EField *p) = 0;
   virtual void visitEVar(EVar *p) = 0;
   virtual void visitELitInt(ELitInt *p) = 0;
   virtual void visitELitTrue(ELitTrue *p) = 0;
   virtual void visitELitFalse(ELitFalse *p) = 0;
-  virtual void visitEApp(EApp *p) = 0;
   virtual void visitEString(EString *p) = 0;
+  virtual void visitEApp(EApp *p) = 0;
+  virtual void visitEPrim(EPrim *p) = 0;
+  virtual void visitEIndex(EIndex *p) = 0;
+  virtual void visitEMethod(EMethod *p) = 0;
+  virtual void visitEField(EField *p) = 0;
   virtual void visitNeg(Neg *p) = 0;
   virtual void visitNot(Not *p) = 0;
   virtual void visitEMul(EMul *p) = 0;
@@ -889,21 +891,6 @@ public:
   void swap(ECast &);
 };
 
-class EIndex : public Expr
-{
-public:
-  Expr *expr_1;
-  Expr *expr_2;
-
-  EIndex(const EIndex &);
-  EIndex &operator=(const EIndex &);
-  EIndex(Expr *p1, Expr *p2);
-  ~EIndex();
-  virtual void accept(Visitor *v);
-  virtual EIndex *clone() const;
-  void swap(EIndex &);
-};
-
 class ENewArr : public Expr
 {
 public:
@@ -931,37 +918,6 @@ public:
   virtual void accept(Visitor *v);
   virtual ENewObj *clone() const;
   void swap(ENewObj &);
-};
-
-class EMethod : public Expr
-{
-public:
-  Expr *expr_;
-  Ident ident_;
-  ListExpr *listexpr_;
-
-  EMethod(const EMethod &);
-  EMethod &operator=(const EMethod &);
-  EMethod(Expr *p1, Ident p2, ListExpr *p3);
-  ~EMethod();
-  virtual void accept(Visitor *v);
-  virtual EMethod *clone() const;
-  void swap(EMethod &);
-};
-
-class EField : public Expr
-{
-public:
-  Expr *expr_;
-  Ident ident_;
-
-  EField(const EField &);
-  EField &operator=(const EField &);
-  EField(Expr *p1, Ident p2);
-  ~EField();
-  virtual void accept(Visitor *v);
-  virtual EField *clone() const;
-  void swap(EField &);
 };
 
 class EVar : public Expr
@@ -1018,6 +974,20 @@ public:
   void swap(ELitFalse &);
 };
 
+class EString : public Expr
+{
+public:
+  String string_;
+
+  EString(const EString &);
+  EString &operator=(const EString &);
+  EString(String p1);
+  ~EString();
+  virtual void accept(Visitor *v);
+  virtual EString *clone() const;
+  void swap(EString &);
+};
+
 class EApp : public Expr
 {
 public:
@@ -1033,18 +1003,64 @@ public:
   void swap(EApp &);
 };
 
-class EString : public Expr
+class EPrim : public Expr
 {
 public:
-  String string_;
+  Expr *expr_;
 
-  EString(const EString &);
-  EString &operator=(const EString &);
-  EString(String p1);
-  ~EString();
+  EPrim(const EPrim &);
+  EPrim &operator=(const EPrim &);
+  EPrim(Expr *p1);
+  ~EPrim();
   virtual void accept(Visitor *v);
-  virtual EString *clone() const;
-  void swap(EString &);
+  virtual EPrim *clone() const;
+  void swap(EPrim &);
+};
+
+class EIndex : public Expr
+{
+public:
+  Expr *expr_1;
+  Expr *expr_2;
+
+  EIndex(const EIndex &);
+  EIndex &operator=(const EIndex &);
+  EIndex(Expr *p1, Expr *p2);
+  ~EIndex();
+  virtual void accept(Visitor *v);
+  virtual EIndex *clone() const;
+  void swap(EIndex &);
+};
+
+class EMethod : public Expr
+{
+public:
+  Expr *expr_;
+  Ident ident_;
+  ListExpr *listexpr_;
+
+  EMethod(const EMethod &);
+  EMethod &operator=(const EMethod &);
+  EMethod(Expr *p1, Ident p2, ListExpr *p3);
+  ~EMethod();
+  virtual void accept(Visitor *v);
+  virtual EMethod *clone() const;
+  void swap(EMethod &);
+};
+
+class EField : public Expr
+{
+public:
+  Expr *expr_;
+  Ident ident_;
+
+  EField(const EField &);
+  EField &operator=(const EField &);
+  EField(Expr *p1, Ident p2);
+  ~EField();
+  virtual void accept(Visitor *v);
+  virtual EField *clone() const;
+  void swap(EField &);
 };
 
 class Neg : public Expr

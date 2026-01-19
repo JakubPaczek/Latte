@@ -94,35 +94,37 @@ separator       Type "," ;
 
 -- Expressions
 
-ESelf.          Expr6 ::= "self" ;
+ESelf.          Expr7 ::= "self" ;
 
-EParen.         Expr6 ::= "(" Expr ")" ;
+EParen.         Expr7 ::= "(" Expr ")" ;
 
-ENull.          Expr6 ::= "null" ;
+ENull.          Expr7 ::= "null" ;
 
-ECast.          Expr6 ::= "(" Type ")" Expr6 ;
+ECast.          Expr7 ::= "(" Type ")" Expr6 ;
+
+ENewArr.        Expr7 ::= "new" BaseType "[" Expr "]" ;
+
+ENewObj.        Expr7 ::= "new" Ident ;
+
+EVar.           Expr7 ::= Ident ;
+
+ELitInt.        Expr7 ::= Integer ;
+
+ELitTrue.       Expr7 ::= "true" ;
+
+ELitFalse.      Expr7 ::= "false" ;
+
+EString.        Expr7 ::= String ;
+
+EApp.           Expr7 ::= Ident "(" [Expr] ")" ;
+
+EPrim.          Expr6 ::= Expr7 ;
 
 EIndex.         Expr6 ::= Expr6 "[" Expr "]" ;
-
-ENewArr.        Expr6 ::= "new" BaseType "[" Expr "]" ;
-
-ENewObj.        Expr6 ::= "new" Ident ;
 
 EMethod.        Expr6 ::= Expr6 "." Ident "(" [Expr] ")" ;
 
 EField.         Expr6 ::= Expr6 "." Ident ;
-
-EVar.           Expr6 ::= Ident ;
-
-ELitInt.        Expr6 ::= Integer ;
-
-ELitTrue.       Expr6 ::= "true" ;
-
-ELitFalse.      Expr6 ::= "false" ;
-
-EApp.           Expr6 ::= Ident "(" [Expr] ")" ;
-
-EString.        Expr6 ::= String ;
 
 Neg.            Expr5 ::= "-" Expr6 ;
 
@@ -138,7 +140,7 @@ EAnd.           Expr1 ::= Expr2 "&&" Expr1 ;
 
 EOr.            Expr ::= Expr1 "||" Expr ;
 
-coercions       Expr 6 ;
+coercions       Expr 7 ;
 
 separator       Expr "," ;
 

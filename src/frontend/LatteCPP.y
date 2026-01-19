@@ -151,6 +151,7 @@ extern int yylex(YYSTYPE *lvalp, YYLTYPE *llocp, yyscan_t scanner);
 %type <type_> Type
 %type <basetype_> BaseType
 %type <listtype_> ListType
+%type <expr_> Expr7
 %type <expr_> Expr6
 %type <expr_> Expr5
 %type <expr_> Expr4
@@ -231,22 +232,25 @@ ListType : /* empty */ { $$ = new ListType(); }
   | Type { $$ = new ListType(); $$->push_back($1); }
   | Type _COMMA ListType { $3->push_back($1); $$ = $3; }
 ;
-Expr6 : _KW_self { $$ = new ESelf(); }
+Expr7 : _KW_self { $$ = new ESelf(); }
   | _LPAREN Expr _RPAREN { $$ = new EParen($2); }
   | _KW_null { $$ = new ENull(); }
   | _LPAREN Type _RPAREN Expr6 { $$ = new ECast($2, $4); }
-  | Expr6 _LBRACK Expr _RBRACK { $$ = new EIndex($1, $3); }
   | _KW_new BaseType _LBRACK Expr _RBRACK { $$ = new ENewArr($2, $4); }
   | _KW_new _IDENT_ { $$ = new ENewObj($2); }
-  | Expr6 _DOT _IDENT_ _LPAREN ListExpr _RPAREN { std::reverse($5->begin(),$5->end()) ;$$ = new EMethod($1, $3, $5); }
-  | Expr6 _DOT _IDENT_ { $$ = new EField($1, $3); }
   | _IDENT_ { $$ = new EVar($1); }
   | _INTEGER_ { $$ = new ELitInt($1); }
   | _KW_true { $$ = new ELitTrue(); }
   | _KW_false { $$ = new ELitFalse(); }
-  | _IDENT_ _LPAREN ListExpr _RPAREN { std::reverse($3->begin(),$3->end()) ;$$ = new EApp($1, $3); }
   | _STRING_ { $$ = new EString($1); }
+  | _IDENT_ _LPAREN ListExpr _RPAREN { std::reverse($3->begin(),$3->end()) ;$$ = new EApp($1, $3); }
   | _LPAREN Expr _RPAREN { $$ = $2; }
+;
+Expr6 : Expr7 { $$ = new EPrim($1); }
+  | Expr6 _LBRACK Expr _RBRACK { $$ = new EIndex($1, $3); }
+  | Expr6 _DOT _IDENT_ _LPAREN ListExpr _RPAREN { std::reverse($5->begin(),$5->end()) ;$$ = new EMethod($1, $3, $5); }
+  | Expr6 _DOT _IDENT_ { $$ = new EField($1, $3); }
+  | Expr7 { $$ = $1; }
 ;
 Expr5 : _MINUS Expr6 { $$ = new Neg($2); }
   | _BANG Expr6 { $$ = new Not($2); }

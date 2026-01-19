@@ -713,47 +713,154 @@ void PrintAbsyn::visitExpr(Expr *p) {} //abstract class
 void PrintAbsyn::visitESelf(ESelf *p)
 {
   int oldi = _i_;
-  if (oldi > 6) render(_L_PAREN);
+  if (oldi > 7) render(_L_PAREN);
 
   render("self");
 
-  if (oldi > 6) render(_R_PAREN);
+  if (oldi > 7) render(_R_PAREN);
   _i_ = oldi;
 }
 
 void PrintAbsyn::visitEParen(EParen *p)
 {
   int oldi = _i_;
-  if (oldi > 6) render(_L_PAREN);
+  if (oldi > 7) render(_L_PAREN);
 
   render('(');
   _i_ = 0; p->expr_->accept(this);
   render(')');
 
-  if (oldi > 6) render(_R_PAREN);
+  if (oldi > 7) render(_R_PAREN);
   _i_ = oldi;
 }
 
 void PrintAbsyn::visitENull(ENull *p)
 {
   int oldi = _i_;
-  if (oldi > 6) render(_L_PAREN);
+  if (oldi > 7) render(_L_PAREN);
 
   render("null");
 
-  if (oldi > 6) render(_R_PAREN);
+  if (oldi > 7) render(_R_PAREN);
   _i_ = oldi;
 }
 
 void PrintAbsyn::visitECast(ECast *p)
 {
   int oldi = _i_;
-  if (oldi > 6) render(_L_PAREN);
+  if (oldi > 7) render(_L_PAREN);
 
   render('(');
   _i_ = 0; p->type_->accept(this);
   render(')');
   _i_ = 6; p->expr_->accept(this);
+
+  if (oldi > 7) render(_R_PAREN);
+  _i_ = oldi;
+}
+
+void PrintAbsyn::visitENewArr(ENewArr *p)
+{
+  int oldi = _i_;
+  if (oldi > 7) render(_L_PAREN);
+
+  render("new");
+  _i_ = 0; p->basetype_->accept(this);
+  render('[');
+  _i_ = 0; p->expr_->accept(this);
+  render(']');
+
+  if (oldi > 7) render(_R_PAREN);
+  _i_ = oldi;
+}
+
+void PrintAbsyn::visitENewObj(ENewObj *p)
+{
+  int oldi = _i_;
+  if (oldi > 7) render(_L_PAREN);
+
+  render("new");
+  visitIdent(p->ident_);
+
+  if (oldi > 7) render(_R_PAREN);
+  _i_ = oldi;
+}
+
+void PrintAbsyn::visitEVar(EVar *p)
+{
+  int oldi = _i_;
+  if (oldi > 7) render(_L_PAREN);
+
+  visitIdent(p->ident_);
+
+  if (oldi > 7) render(_R_PAREN);
+  _i_ = oldi;
+}
+
+void PrintAbsyn::visitELitInt(ELitInt *p)
+{
+  int oldi = _i_;
+  if (oldi > 7) render(_L_PAREN);
+
+  visitInteger(p->integer_);
+
+  if (oldi > 7) render(_R_PAREN);
+  _i_ = oldi;
+}
+
+void PrintAbsyn::visitELitTrue(ELitTrue *p)
+{
+  int oldi = _i_;
+  if (oldi > 7) render(_L_PAREN);
+
+  render("true");
+
+  if (oldi > 7) render(_R_PAREN);
+  _i_ = oldi;
+}
+
+void PrintAbsyn::visitELitFalse(ELitFalse *p)
+{
+  int oldi = _i_;
+  if (oldi > 7) render(_L_PAREN);
+
+  render("false");
+
+  if (oldi > 7) render(_R_PAREN);
+  _i_ = oldi;
+}
+
+void PrintAbsyn::visitEString(EString *p)
+{
+  int oldi = _i_;
+  if (oldi > 7) render(_L_PAREN);
+
+  visitString(p->string_);
+
+  if (oldi > 7) render(_R_PAREN);
+  _i_ = oldi;
+}
+
+void PrintAbsyn::visitEApp(EApp *p)
+{
+  int oldi = _i_;
+  if (oldi > 7) render(_L_PAREN);
+
+  visitIdent(p->ident_);
+  render('(');
+  _i_ = 0; visitListExpr(p->listexpr_);
+  render(')');
+
+  if (oldi > 7) render(_R_PAREN);
+  _i_ = oldi;
+}
+
+void PrintAbsyn::visitEPrim(EPrim *p)
+{
+  int oldi = _i_;
+  if (oldi > 6) render(_L_PAREN);
+
+  _i_ = 7; p->expr_->accept(this);
 
   if (oldi > 6) render(_R_PAREN);
   _i_ = oldi;
@@ -768,33 +875,6 @@ void PrintAbsyn::visitEIndex(EIndex *p)
   render('[');
   _i_ = 0; p->expr_2->accept(this);
   render(']');
-
-  if (oldi > 6) render(_R_PAREN);
-  _i_ = oldi;
-}
-
-void PrintAbsyn::visitENewArr(ENewArr *p)
-{
-  int oldi = _i_;
-  if (oldi > 6) render(_L_PAREN);
-
-  render("new");
-  _i_ = 0; p->basetype_->accept(this);
-  render('[');
-  _i_ = 0; p->expr_->accept(this);
-  render(']');
-
-  if (oldi > 6) render(_R_PAREN);
-  _i_ = oldi;
-}
-
-void PrintAbsyn::visitENewObj(ENewObj *p)
-{
-  int oldi = _i_;
-  if (oldi > 6) render(_L_PAREN);
-
-  render("new");
-  visitIdent(p->ident_);
 
   if (oldi > 6) render(_R_PAREN);
   _i_ = oldi;
@@ -824,75 +904,6 @@ void PrintAbsyn::visitEField(EField *p)
   _i_ = 6; p->expr_->accept(this);
   render('.');
   visitIdent(p->ident_);
-
-  if (oldi > 6) render(_R_PAREN);
-  _i_ = oldi;
-}
-
-void PrintAbsyn::visitEVar(EVar *p)
-{
-  int oldi = _i_;
-  if (oldi > 6) render(_L_PAREN);
-
-  visitIdent(p->ident_);
-
-  if (oldi > 6) render(_R_PAREN);
-  _i_ = oldi;
-}
-
-void PrintAbsyn::visitELitInt(ELitInt *p)
-{
-  int oldi = _i_;
-  if (oldi > 6) render(_L_PAREN);
-
-  visitInteger(p->integer_);
-
-  if (oldi > 6) render(_R_PAREN);
-  _i_ = oldi;
-}
-
-void PrintAbsyn::visitELitTrue(ELitTrue *p)
-{
-  int oldi = _i_;
-  if (oldi > 6) render(_L_PAREN);
-
-  render("true");
-
-  if (oldi > 6) render(_R_PAREN);
-  _i_ = oldi;
-}
-
-void PrintAbsyn::visitELitFalse(ELitFalse *p)
-{
-  int oldi = _i_;
-  if (oldi > 6) render(_L_PAREN);
-
-  render("false");
-
-  if (oldi > 6) render(_R_PAREN);
-  _i_ = oldi;
-}
-
-void PrintAbsyn::visitEApp(EApp *p)
-{
-  int oldi = _i_;
-  if (oldi > 6) render(_L_PAREN);
-
-  visitIdent(p->ident_);
-  render('(');
-  _i_ = 0; visitListExpr(p->listexpr_);
-  render(')');
-
-  if (oldi > 6) render(_R_PAREN);
-  _i_ = oldi;
-}
-
-void PrintAbsyn::visitEString(EString *p)
-{
-  int oldi = _i_;
-  if (oldi > 6) render(_L_PAREN);
-
-  visitString(p->string_);
 
   if (oldi > 6) render(_R_PAREN);
   _i_ = oldi;
@@ -1680,17 +1691,6 @@ void ShowAbsyn::visitECast(ECast *p)
   bufAppend(']');
   bufAppend(')');
 }
-void ShowAbsyn::visitEIndex(EIndex *p)
-{
-  bufAppend('(');
-  bufAppend("EIndex");
-  bufAppend(' ');
-  p->expr_1->accept(this);
-  bufAppend(' ');
-  p->expr_2->accept(this);
-  bufAppend(' ');
-  bufAppend(')');
-}
 void ShowAbsyn::visitENewArr(ENewArr *p)
 {
   bufAppend('(');
@@ -1712,6 +1712,72 @@ void ShowAbsyn::visitENewObj(ENewObj *p)
   bufAppend("ENewObj");
   bufAppend(' ');
   visitIdent(p->ident_);
+  bufAppend(')');
+}
+void ShowAbsyn::visitEVar(EVar *p)
+{
+  bufAppend('(');
+  bufAppend("EVar");
+  bufAppend(' ');
+  visitIdent(p->ident_);
+  bufAppend(')');
+}
+void ShowAbsyn::visitELitInt(ELitInt *p)
+{
+  bufAppend('(');
+  bufAppend("ELitInt");
+  bufAppend(' ');
+  visitInteger(p->integer_);
+  bufAppend(')');
+}
+void ShowAbsyn::visitELitTrue(ELitTrue *p)
+{
+  bufAppend("ELitTrue");
+}
+void ShowAbsyn::visitELitFalse(ELitFalse *p)
+{
+  bufAppend("ELitFalse");
+}
+void ShowAbsyn::visitEString(EString *p)
+{
+  bufAppend('(');
+  bufAppend("EString");
+  bufAppend(' ');
+  visitString(p->string_);
+  bufAppend(')');
+}
+void ShowAbsyn::visitEApp(EApp *p)
+{
+  bufAppend('(');
+  bufAppend("EApp");
+  bufAppend(' ');
+  visitIdent(p->ident_);
+  bufAppend(' ');
+  bufAppend('[');
+  if (p->listexpr_)  p->listexpr_->accept(this);
+  bufAppend(']');
+  bufAppend(' ');
+  bufAppend(')');
+}
+void ShowAbsyn::visitEPrim(EPrim *p)
+{
+  bufAppend('(');
+  bufAppend("EPrim");
+  bufAppend(' ');
+  bufAppend('[');
+  if (p->expr_)  p->expr_->accept(this);
+  bufAppend(']');
+  bufAppend(')');
+}
+void ShowAbsyn::visitEIndex(EIndex *p)
+{
+  bufAppend('(');
+  bufAppend("EIndex");
+  bufAppend(' ');
+  p->expr_1->accept(this);
+  bufAppend(' ');
+  p->expr_2->accept(this);
+  bufAppend(' ');
   bufAppend(')');
 }
 void ShowAbsyn::visitEMethod(EMethod *p)
@@ -1741,51 +1807,6 @@ void ShowAbsyn::visitEField(EField *p)
   bufAppend(']');
   bufAppend(' ');
   visitIdent(p->ident_);
-  bufAppend(')');
-}
-void ShowAbsyn::visitEVar(EVar *p)
-{
-  bufAppend('(');
-  bufAppend("EVar");
-  bufAppend(' ');
-  visitIdent(p->ident_);
-  bufAppend(')');
-}
-void ShowAbsyn::visitELitInt(ELitInt *p)
-{
-  bufAppend('(');
-  bufAppend("ELitInt");
-  bufAppend(' ');
-  visitInteger(p->integer_);
-  bufAppend(')');
-}
-void ShowAbsyn::visitELitTrue(ELitTrue *p)
-{
-  bufAppend("ELitTrue");
-}
-void ShowAbsyn::visitELitFalse(ELitFalse *p)
-{
-  bufAppend("ELitFalse");
-}
-void ShowAbsyn::visitEApp(EApp *p)
-{
-  bufAppend('(');
-  bufAppend("EApp");
-  bufAppend(' ');
-  visitIdent(p->ident_);
-  bufAppend(' ');
-  bufAppend('[');
-  if (p->listexpr_)  p->listexpr_->accept(this);
-  bufAppend(']');
-  bufAppend(' ');
-  bufAppend(')');
-}
-void ShowAbsyn::visitEString(EString *p)
-{
-  bufAppend('(');
-  bufAppend("EString");
-  bufAppend(' ');
-  visitString(p->string_);
   bufAppend(')');
 }
 void ShowAbsyn::visitNeg(Neg *p)

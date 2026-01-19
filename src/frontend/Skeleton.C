@@ -353,15 +353,6 @@ void Skeleton::visitECast(ECast *e_cast)
 
 }
 
-void Skeleton::visitEIndex(EIndex *e_index)
-{
-  /* Code For EIndex Goes Here */
-
-  if (e_index->expr_1) e_index->expr_1->accept(this);
-  if (e_index->expr_2) e_index->expr_2->accept(this);
-
-}
-
 void Skeleton::visitENewArr(ENewArr *e_new_arr)
 {
   /* Code For ENewArr Goes Here */
@@ -376,25 +367,6 @@ void Skeleton::visitENewObj(ENewObj *e_new_obj)
   /* Code For ENewObj Goes Here */
 
   visitIdent(e_new_obj->ident_);
-
-}
-
-void Skeleton::visitEMethod(EMethod *e_method)
-{
-  /* Code For EMethod Goes Here */
-
-  if (e_method->expr_) e_method->expr_->accept(this);
-  visitIdent(e_method->ident_);
-  if (e_method->listexpr_) e_method->listexpr_->accept(this);
-
-}
-
-void Skeleton::visitEField(EField *e_field)
-{
-  /* Code For EField Goes Here */
-
-  if (e_field->expr_) e_field->expr_->accept(this);
-  visitIdent(e_field->ident_);
 
 }
 
@@ -428,6 +400,14 @@ void Skeleton::visitELitFalse(ELitFalse *e_lit_false)
 
 }
 
+void Skeleton::visitEString(EString *e_string)
+{
+  /* Code For EString Goes Here */
+
+  visitString(e_string->string_);
+
+}
+
 void Skeleton::visitEApp(EApp *e_app)
 {
   /* Code For EApp Goes Here */
@@ -437,11 +417,39 @@ void Skeleton::visitEApp(EApp *e_app)
 
 }
 
-void Skeleton::visitEString(EString *e_string)
+void Skeleton::visitEPrim(EPrim *e_prim)
 {
-  /* Code For EString Goes Here */
+  /* Code For EPrim Goes Here */
 
-  visitString(e_string->string_);
+  if (e_prim->expr_) e_prim->expr_->accept(this);
+
+}
+
+void Skeleton::visitEIndex(EIndex *e_index)
+{
+  /* Code For EIndex Goes Here */
+
+  if (e_index->expr_1) e_index->expr_1->accept(this);
+  if (e_index->expr_2) e_index->expr_2->accept(this);
+
+}
+
+void Skeleton::visitEMethod(EMethod *e_method)
+{
+  /* Code For EMethod Goes Here */
+
+  if (e_method->expr_) e_method->expr_->accept(this);
+  visitIdent(e_method->ident_);
+  if (e_method->listexpr_) e_method->listexpr_->accept(this);
+
+}
+
+void Skeleton::visitEField(EField *e_field)
+{
+  /* Code For EField Goes Here */
+
+  if (e_field->expr_) e_field->expr_->accept(this);
+  visitIdent(e_field->ident_);
 
 }
 
