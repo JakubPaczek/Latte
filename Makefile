@@ -29,52 +29,6 @@ TARGET_X86_64 := latc_x86_64
 RUNTIME_SRC := $(LIB_DIR)/runtime.c
 RUNTIME_OBJ := $(LIB_DIR)/runtime.o
 
-# Detect MSYS/MinGW (even though OS=Windows_NT)
-ifneq (,$(findstring MSYS,$(MSYSTEM)))
-  FORCE_UNIX := 1
-endif
-ifneq (,$(findstring MINGW,$(MSYSTEM)))
-  FORCE_UNIX := 1
-endif
-ifneq (,$(findstring UCRT64,$(MSYSTEM)))
-  FORCE_UNIX := 1
-endif
-
-# -----------------------------
-# Platform helpers (Windows vs Unix)
-# -----------------------------
-ifeq ($(FORCE_UNIX),1)
-  # treat as Unix shell tools
-  RM      := rm -f
-  RMDIR   := rm -rf
-  COPY    := cp -f
-  MKDIR_P := mkdir -p $(LIB_DIR)
-  NULLDEV := /dev/null
-  EXEEXT  :=
-  TARGET_WIN        := $(TARGET)
-  TARGET_X86_64_WIN := $(TARGET_X86_64)
-else ifeq ($(OS),Windows_NT)
-  # true cmd.exe environment (optional)
-  RM      := del /Q
-  RMDIR   := rmdir /S /Q
-  COPY    := cmd //C copy /Y
-  MKDIR_P := if not exist "$(LIB_DIR)" mkdir "$(LIB_DIR)"
-  NULLDEV := NUL
-  EXEEXT  := .exe
-  TARGET_WIN        := $(TARGET)$(EXEEXT)
-  TARGET_X86_64_WIN := $(TARGET_X86_64)$(EXEEXT)
-else
-  # Unix
-  RM      := rm -f
-  RMDIR   := rm -rf
-  COPY    := cp -f
-  MKDIR_P := mkdir -p $(LIB_DIR)
-  NULLDEV := /dev/null
-  EXEEXT  :=
-  TARGET_WIN        := $(TARGET)
-  TARGET_X86_64_WIN := $(TARGET_X86_64)
-endif
-
 # -----------------------------
 # Frontend objects (built by make -C src/frontend)
 # -----------------------------
@@ -103,7 +57,7 @@ SEM_OBJS := \
 
 .PHONY: all clean distclean frontend runtime bnfc
 
-all: frontend runtime $(TARGET_WIN) $(TARGET_X86_64_WIN)
+all: frontend runtime $(TARGET) $(TARGET_X86_64)
 
 # -----------------------------
 # BNFC (run manually when .cf changes)
@@ -129,7 +83,7 @@ frontend:
 runtime: $(RUNTIME_OBJ)
 
 $(RUNTIME_OBJ): $(RUNTIME_SRC)
-	@$(MKDIR_P)
+	@mkdir -p $(LIB_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # -----------------------------
@@ -148,50 +102,36 @@ $(SEM_DIR)/latte_error.o: $(SEM_DIR)/latte_error.cpp $(SEM_DIR)/latte_error.h
 	$(CXX) $(CXXFLAGS) -I$(SEM_DIR) -c $< -o $@
 
 # -----------------------------
-# (Backend disabled)
-# -----------------------------
-# $(BACKEND_DIR)/codegen.o: $(BACKEND_DIR)/codegen.cpp $(BACKEND_DIR)/codegen.h
-# 	$(CXX) $(CXXFLAGS) -I$(FRONTEND_DIR) -I$(SRC_DIR) -c $< -o $@
-#
-# $(BACKEND_DIR)/regalloc.o: $(BACKEND_DIR)/regalloc.cpp $(BACKEND_DIR)/regalloc.h
-# 	$(CXX) $(CXXFLAGS) -I$(SRC_DIR) -c $< -o $@
-#
-# $(BACKEND_DIR)/x86_emit.o: $(BACKEND_DIR)/x86_emit.cpp $(BACKEND_DIR)/x86_emit.h
-# 	$(CXX) $(CXXFLAGS) -I$(SRC_DIR) -c $< -o $@
-
-# -----------------------------
 # Link compiler
 # -----------------------------
-$(TARGET_WIN): frontend $(CORE_OBJS) $(SEM_OBJS) $(FRONTEND_OBJS)
+$(TARGET): frontend $(CORE_OBJS) $(SEM_OBJS) $(FRONTEND_OBJS)
 	$(CXX) $(CXXFLAGS) -I$(FRONTEND_DIR) -I$(SRC_DIR) -I$(SEM_DIR) -o $@ \
 	  $(CORE_OBJS) $(SEM_OBJS) $(FRONTEND_OBJS)
 
-$(TARGET_X86_64_WIN): $(TARGET_WIN)
-ifeq ($(OS),Windows_NT)
-	$(COPY) $(TARGET_WIN) $(TARGET_X86_64_WIN) >$(NULLDEV)
-else
-	$(COPY) $(TARGET_WIN) $(TARGET_X86_64_WIN)
-endif
+# For now: same binary, different name.
+# Later: replace with a real backend build from src/latc_x86_64.cpp + backend objs.
+$(TARGET_X86_64): $(TARGET)
+	cp -f $(TARGET) $(TARGET_X86_64)
 
 # -----------------------------
 # Cleanup
 # -----------------------------
 clean:
 ifeq ($(OS),Windows_NT)
-	-$(RM) $(TARGET_WIN) $(TARGET_X86_64_WIN) 2>$(NULLDEV) || exit 0
-	-$(RM) $(SRC_DIR)\*.o 2>$(NULLDEV) || exit 0
-	-$(RM) $(SEM_DIR)\*.o 2>$(NULLDEV) || exit 0
-	-$(RM) $(RUNTIME_OBJ) 2>$(NULLDEV) || exit 0
+	-del /Q $(TARGET) $(TARGET_X86_64) 2>NUL || exit 0
+	-del /Q $(SRC_DIR)\*.o 2>NUL || exit 0
+	-del /Q $(SEM_DIR)\*.o 2>NUL || exit 0
+	-del /Q $(RUNTIME_OBJ) 2>NUL || exit 0
 	$(MAKE) -C $(FRONTEND_DIR) clean || exit 0
 else
-	$(RM) $(TARGET_WIN) $(TARGET_X86_64_WIN) \
+	rm -f $(TARGET) $(TARGET_X86_64) \
 	      $(SRC_DIR)/*.o $(SEM_DIR)/*.o $(RUNTIME_OBJ)
 	$(MAKE) -C $(FRONTEND_DIR) clean || true
 endif
 
 distclean: clean
 ifeq ($(OS),Windows_NT)
-	-$(RMDIR) $(FRONTEND_DIR) 2>$(NULLDEV) || exit 0
+	-rmdir /S /Q $(FRONTEND_DIR) 2>NUL || exit 0
 else
-	$(RMDIR) $(FRONTEND_DIR)
+	rm -rf $(FRONTEND_DIR)
 endif

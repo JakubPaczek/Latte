@@ -1,8 +1,8 @@
 #include <cstdio>
-#include <cstdlib>
+#include <cstdlib>   // std::system
 #include <iostream>
-#include <string>
 #include <stdexcept>
+#include <string>
 
 #include "frontend/Parser.H"
 #include "frontend/Absyn.H"
@@ -15,41 +15,54 @@
 #include "backend/x86_emit.h"
 #include "backend/codegen.h"
 
+// AST -> IR entry (your codegen layer).
 ModuleIR buildModuleIR(Program* program);
 
-static std::string makeOutPath(const char* inPath)
+static Program* parseProgramOrThrow(const char* path)
 {
-    std::string s(inPath ? inPath : "");
-    auto slash = s.find_last_of("/\\");
-    auto dot = s.find_last_of('.');
-    if (dot == std::string::npos || (slash != std::string::npos && dot < slash))
-        return s + ".s";
-    s.replace(dot, std::string::npos, ".s");
-    return s;
+    FILE* in = std::fopen(path, "r");
+    if (!in)
+        throw std::runtime_error("Cannot open input file");
+
+    Program* program = pProgram(in);
+    std::fclose(in);
+
+    if (!program)
+        throw std::runtime_error("Parse error");
+
+    return program;
 }
 
-static std::string makeExePath(const char* inPath)
+static std::string replaceExtWithS(const std::string& inPath)
 {
-    std::string s(inPath ? inPath : "");
-    auto slash = s.find_last_of("/\\");
-    auto dot = s.find_last_of('.');
-    if (dot == std::string::npos || (slash != std::string::npos && dot < slash))
-        return s;
-    return s.substr(0, dot);
+    // Replace last ".xxx" with ".s". If no extension, append ".s".
+    const auto slash = inPath.find_last_of('/');
+    const auto dot   = inPath.find_last_of('.');
+    const bool hasExt = (dot != std::string::npos) && (slash == std::string::npos || dot > slash);
+
+    if (!hasExt) return inPath + ".s";
+
+    std::string out = inPath;
+    out.replace(dot, std::string::npos, ".s");
+    return out;
 }
 
-static bool isLatcX64Driver(const char* argv0)
+static std::string dropExt(const std::string& inPath)
 {
-    std::string s(argv0 ? argv0 : "");
-    auto slash = s.find_last_of("/\\");
-    if (slash != std::string::npos) s = s.substr(slash + 1);
-    return s == "latc_x86_64" || s == "latc_x86_64.exe";
+    // Remove last ".xxx". If no extension, return original.
+    const auto slash = inPath.find_last_of('/');
+    const auto dot   = inPath.find_last_of('.');
+    const bool hasExt = (dot != std::string::npos) && (slash == std::string::npos || dot > slash);
+
+    if (!hasExt) return inPath;
+    return inPath.substr(0, dot);
 }
 
 static std::string asmEscape(const std::string& s)
 {
     std::string o;
     o.reserve(s.size() + 8);
+
     for (unsigned char c : s)
     {
         switch (c)
@@ -72,25 +85,26 @@ static std::string asmEscape(const std::string& s)
             }
         }
     }
+
     return o;
 }
 
-static void emitStringRodataAndHelpersX64(FILE* out, const ModuleIR& mod)
+static void emitStringRodataX64(FILE* out, const ModuleIR& mod)
 {
-    // .rodata for string literals
+    // String literals in .rodata.
     std::fprintf(out, ".section .rodata\n");
     for (size_t i = 0; i < mod.stringLits.size(); ++i)
     {
         std::fprintf(out, ".LC%zu:\n", i);
-        std::string esc = asmEscape(mod.stringLits[i]);
+        const std::string esc = asmEscape(mod.stringLits[i]);
         std::fprintf(out, "  .asciz \"%s\"\n", esc.c_str());
     }
-
-    // back to text
     std::fprintf(out, ".text\n");
+}
 
-    // char* __latte_str_N()
-    // SysV x86_64: return in %rax, address via RIP-relative LEA.
+static void emitStringGettersX64(FILE* out, const ModuleIR& mod)
+{
+    // char* __latte_str_N() returns address of .LCN in %rax (SysV ABI).
     for (size_t i = 0; i < mod.stringLits.size(); ++i)
     {
         std::fprintf(out, ".globl __latte_str_%zu\n", i);
@@ -98,142 +112,98 @@ static void emitStringRodataAndHelpersX64(FILE* out, const ModuleIR& mod)
         std::fprintf(out, "  leaq .LC%zu(%%rip), %%rax\n", i);
         std::fprintf(out, "  ret\n");
     }
-
-    // IMPORTANT:
-    // Do NOT emit __latte_concat here in asm for x64.
-    // Provide it in lib/runtime.c and compile into lib/runtime.o.
 }
 
-static void linkX64(const std::string& asmPath, const std::string& exePath)
+static void linkExecutableX64(const std::string& asmPath, const std::string& exePath)
 {
-#ifdef _WIN32
-    // MinGW gcc can assemble+link .s directly. // Windows linking
-    std::string log = exePath + ".link.log";
+    // Assemble+link in one step; save errors to a log file.
+    const std::string logPath = exePath + ".link.log";
 
-    // -no-pie is Linux-specific; omit on Windows.
-    std::string cmd =
-        "gcc -o \"" + exePath + "\" \"" + asmPath + "\" lib/runtime.o -lgcc"
-        " >\"" + log + "\" 2>&1";
-
-
-    int rc = std::system(cmd.c_str());
-    if (rc != 0)
-        throw std::runtime_error("Link failed. See: " + log);
-#else
-    std::string log = exePath + ".link.log";
-    std::string cmd =
+    const std::string cmd =
         "gcc -no-pie -o \"" + exePath + "\" \"" + asmPath + "\" lib/runtime.o"
-        " >\"" + log + "\" 2>&1";
+        " >\"" + logPath + "\" 2>&1";
 
-    int rc = std::system(cmd.c_str());
+    const int rc = std::system(cmd.c_str());
     if (rc != 0)
-        throw std::runtime_error("Link failed. See: " + log);
-#endif
+        throw std::runtime_error("Link failed (see " + logPath + ")");
 }
 
 int main(int argc, char* argv[])
 {
-    if (argc != 2)
+    if (argc != 2) // input file path only
     {
         std::cerr << "ERROR\n";
         std::cerr << "Usage: " << argv[0] << " <source-file>\n";
         return 1;
     }
 
-    const char* filename = argv[1];
-    FILE* input = std::fopen(filename, "r");
-    if (!input)
-    {
-        std::cerr << "ERROR\n";
-        std::perror("fopen");
-        return 1;
-    }
-
-    Program* program = pProgram(input);
-    std::fclose(input);
-
-    if (!program)
-    {
-        std::cerr << "ERROR\n";
-        std::cerr << "Parse error in file " << filename << "\n";
-        return 1;
-    }
+    const char* path = argv[1];
 
     try
     {
-        // FRONTEND
+        // Parse AST.
+        Program* program = parseProgramOrThrow(path);
+
+        // Semantic checks.
         TypeChecker checker;
         checker.checkProgram(program);
 
-        // BACKEND: AST -> IR
+        // AST -> IR.
         ModuleIR mod = buildModuleIR(program);
 
-        // Output asm path
-        const std::string outPath = makeOutPath(filename);
-        FILE* out = std::fopen(outPath.c_str(), "w");
+        // Output paths.
+        const std::string inPath(path);
+        const std::string asmPath = replaceExtWithS(inPath);
+        const std::string exePath = dropExt(inPath);
+
+        // Open output file.
+        FILE* out = std::fopen(asmPath.c_str(), "w");
         if (!out)
-        {
-            std::perror("fopen");
-            throw std::runtime_error("Cannot open output file: " + outPath);
-        }
+            throw std::runtime_error("Cannot open output .s file");
 
-        // text section
+        // External runtime symbols.
         std::fprintf(out, ".text\n");
-
-        // Latte runtime functions (provided by lib/runtime.o)
         std::fprintf(out, ".extern printInt\n");
         std::fprintf(out, ".extern printString\n");
-        std::fprintf(out, ".extern error\n");
         std::fprintf(out, ".extern readInt\n");
         std::fprintf(out, ".extern readString\n");
-
-        // string concat helper (NOW IN runtime.c)
+        std::fprintf(out, ".extern error\n");
         std::fprintf(out, ".extern __latte_concat\n");
+        std::fprintf(out, ".extern strcmp\n"); // if used for string relops
 
-        // if you rely on strcmp somewhere (string compare), keep it:
-        std::fprintf(out, ".extern strcmp\n");
+        // Strings.
+        emitStringRodataX64(out, mod);
+        emitStringGettersX64(out, mod);
 
-        // Emit .rodata + string getters
-        emitStringRodataAndHelpersX64(out, mod);
-
-        // Emit functions
+        // Functions.
         RegAllocator ra;
-        X86Emitter emit; // you'll update this emitter to x86_64
-
+        X86Emitter emitter; // expected to be x86_64 SysV
         for (const auto& fn : mod.funs)
         {
             AllocResult alloc = ra.allocate(fn);
-            emit.emitFunction(out, fn, alloc);
+            emitter.emitFunction(out, fn, alloc);
         }
 
         if (std::fclose(out) != 0)
-        {
-            std::perror("fclose");
-            throw std::runtime_error("Error closing output file: " + outPath);
-        }
+            throw std::runtime_error("Error closing output .s file");
 
-        // Link executable only for latc_x86_64 driver.
-        if (isLatcX64Driver(argv[0]))
-        {
-            const std::string exePath = makeExePath(filename);
-            linkX64(outPath, exePath);
-        }
+        // Produce executable.
+        linkExecutableX64(asmPath, exePath);
 
         std::cerr << "OK\n";
-        std::cerr << "Wrote asm: " << outPath << "\n";
         return 0;
     }
-    catch (const LatteError& e)
+    catch (const LatteError& e) // expected errors with line info
     {
         std::cerr << "ERROR\n";
         if (e.line() > 0) std::cerr << "Line " << e.line() << ": ";
         std::cerr << e.what() << "\n";
         return 1;
     }
-    catch (const std::exception& e)
+    catch (const std::exception& e) // parse / IO / internal errors
     {
         std::cerr << "ERROR\n";
-        std::cerr << "Internal error: " << e.what() << "\n";
+        std::cerr << e.what() << "\n";
         return 1;
     }
 }
