@@ -119,6 +119,7 @@ IDENT [a-zA-Z0-9'_]
 <COMMENT>.    /* skip */;
 <COMMENT>[\n] /* skip */;
 
+<INITIAL>{CAPITAL}(\_|({DIGIT}|{LETTER}))*    	 yylval->_string = strdup(yytext); return T_CIdent;
 <INITIAL>"\""        	 LITERAL_BUFFER_CREATE(); BEGIN STRING;
 <STRING>\\             	 BEGIN ESCAPED;
 <STRING>\"             	 yylval->_string = LITERAL_BUFFER_HARVEST(); BEGIN INITIAL; return _STRING_;

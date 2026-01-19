@@ -150,13 +150,13 @@ extern int yylex(YYSTYPE *lvalp, YYLTYPE *llocp, yyscan_t scanner);
 %type <basetype_> BaseType
 %type <listtype_> ListType
 %type <expr_> Expr7
-%type <expr_> Expr6
 %type <expr_> Expr5
 %type <expr_> Expr4
 %type <expr_> Expr3
 %type <expr_> Expr2
 %type <expr_> Expr1
 %type <expr_> Expr
+%type <expr_> Expr6
 %type <listexpr_> ListExpr
 %type <addop_> AddOp
 %type <mulop_> MulOp
@@ -237,12 +237,10 @@ Expr7 : _LPAREN Expr _RPAREN { $$ = new EParen($2); }
   | _KW_false { $$ = new ELitFalse(); }
   | _STRING_ { $$ = new EString($1); }
   | _IDENT_ _LPAREN ListExpr _RPAREN { std::reverse($3->begin(),$3->end()) ;$$ = new EApp($1, $3); }
+  | Expr7 _LBRACK Expr _RBRACK { $$ = new EIndex($1, $3); }
+  | Expr7 _DOT _IDENT_ _LPAREN ListExpr _RPAREN { std::reverse($5->begin(),$5->end()) ;$$ = new EMethod($1, $3, $5); }
+  | Expr7 _DOT _IDENT_ { $$ = new EField($1, $3); }
   | _LPAREN Expr _RPAREN { $$ = $2; }
-;
-Expr6 : Expr6 _LBRACK Expr _RBRACK { $$ = new EIndex($1, $3); }
-  | Expr6 _DOT _IDENT_ _LPAREN ListExpr _RPAREN { std::reverse($5->begin(),$5->end()) ;$$ = new EMethod($1, $3, $5); }
-  | Expr6 _DOT _IDENT_ { $$ = new EField($1, $3); }
-  | Expr7 { $$ = $1; }
 ;
 Expr5 : _MINUS Expr6 { $$ = new Neg($2); }
   | _BANG Expr6 { $$ = new Not($2); }
@@ -262,6 +260,8 @@ Expr1 : Expr2 _DAMP Expr1 { $$ = new EAnd($1, $3); }
 ;
 Expr : Expr1 _DBAR Expr { $$ = new EOr($1, $3); }
   | Expr1 { $$ = $1; }
+;
+Expr6 : Expr7 { $$ = $1; }
 ;
 ListExpr : /* empty */ { $$ = new ListExpr(); }
   | Expr { $$ = new ListExpr(); $$->push_back($1); }

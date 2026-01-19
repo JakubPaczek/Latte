@@ -132,6 +132,7 @@ class PrintAbsyn : public Visitor
   void visitChar(Char c);
   void visitString(String s);
   void visitIdent(String s);
+  void visitCIdent(String s);
  protected:
   char *buf_;
   size_t cur_, buf_size;
@@ -317,6 +318,7 @@ class ShowAbsyn : public Visitor
   void visitChar(Char c);
   void visitString(String s);
   void visitIdent(String s);
+  void visitCIdent(String s);
  protected:
   char *buf_;
   size_t cur_, buf_size;

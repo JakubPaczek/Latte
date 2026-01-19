@@ -668,11 +668,11 @@ public:
 class TArr : public Type
 {
 public:
-  BaseType *basetype_;
+  Type *type_;
 
   TArr(const TArr &);
   TArr &operator=(const TArr &);
-  TArr(BaseType *p1);
+  TArr(Type *p1);
   ~TArr();
   virtual void accept(Visitor *v);
   virtual TArr *clone() const;

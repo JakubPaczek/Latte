@@ -77,10 +77,10 @@ IDENT [a-zA-Z0-9'_]
 <INITIAL>"="      	 return _EQ;
 <INITIAL>"++"      	 return _DPLUS;
 <INITIAL>"--"      	 return _DMINUS;
-<INITIAL>"."      	 return _DOT;
+<INITIAL>":"      	 return _COLON;
 <INITIAL>"["      	 return _LBRACK;
 <INITIAL>"]"      	 return _RBRACK;
-<INITIAL>":"      	 return _COLON;
+<INITIAL>"."      	 return _DOT;
 <INITIAL>"-"      	 return _MINUS;
 <INITIAL>"!"      	 return _BANG;
 <INITIAL>"&&"      	 return _DAMP;

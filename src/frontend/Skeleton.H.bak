@@ -54,6 +54,7 @@ public:
   void visitClassT(ClassT *p);
   void visitVoid(Void *p);
   void visitFun(Fun *p);
+  void visitEParen(EParen *p);
   void visitESelf(ESelf *p);
   void visitENull(ENull *p);
   void visitECast(ECast *p);

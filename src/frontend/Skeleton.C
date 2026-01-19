@@ -47,7 +47,7 @@ void Skeleton::visitClassDef(ClassDef *class_def)
 {
   /* Code For ClassDef Goes Here */
 
-  visitIdent(class_def->ident_);
+  visitCIdent(class_def->cident_);
   if (class_def->listmember_) class_def->listmember_->accept(this);
 
 }
@@ -56,8 +56,8 @@ void Skeleton::visitClassExt(ClassExt *class_ext)
 {
   /* Code For ClassExt Goes Here */
 
-  visitIdent(class_ext->ident_1);
-  visitIdent(class_ext->ident_2);
+  visitCIdent(class_ext->cident_1);
+  visitCIdent(class_ext->cident_2);
   if (class_ext->listmember_) class_ext->listmember_->accept(this);
 
 }
@@ -284,7 +284,7 @@ void Skeleton::visitClassT(ClassT *class_t)
 {
   /* Code For ClassT Goes Here */
 
-  visitIdent(class_t->ident_);
+  visitCIdent(class_t->cident_);
 
 }
 
@@ -332,7 +332,7 @@ void Skeleton::visitENewObj(ENewObj *e_new_obj)
 {
   /* Code For ENewObj Goes Here */
 
-  visitIdent(e_new_obj->ident_);
+  visitCIdent(e_new_obj->cident_);
 
 }
 
@@ -633,6 +633,11 @@ void Skeleton::visitString(String x)
 void Skeleton::visitIdent(Ident x)
 {
   /* Code for Ident Goes Here */
+}
+
+void Skeleton::visitCIdent(CIdent x)
+{
+  /* Code for CIdent Goes Here */
 }
 
 

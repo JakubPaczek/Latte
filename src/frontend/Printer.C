@@ -171,7 +171,7 @@ void PrintAbsyn::visitClassDef(ClassDef *p)
   if (oldi > 0) render(_L_PAREN);
 
   render("class");
-  visitIdent(p->ident_);
+  visitCIdent(p->cident_);
   render('{');
   _i_ = 0; visitListMember(p->listmember_);
   render('}');
@@ -186,9 +186,9 @@ void PrintAbsyn::visitClassExt(ClassExt *p)
   if (oldi > 0) render(_L_PAREN);
 
   render("class");
-  visitIdent(p->ident_1);
+  visitCIdent(p->cident_1);
   render("extends");
-  visitIdent(p->ident_2);
+  visitCIdent(p->cident_2);
   render('{');
   _i_ = 0; visitListMember(p->listmember_);
   render('}');
@@ -633,7 +633,7 @@ void PrintAbsyn::visitClassT(ClassT *p)
   int oldi = _i_;
   if (oldi > 0) render(_L_PAREN);
 
-  visitIdent(p->ident_);
+  visitCIdent(p->cident_);
 
   if (oldi > 0) render(_R_PAREN);
   _i_ = oldi;
@@ -729,7 +729,7 @@ void PrintAbsyn::visitENewObj(ENewObj *p)
   if (oldi > 7) render(_L_PAREN);
 
   render("new");
-  visitIdent(p->ident_);
+  visitCIdent(p->cident_);
 
   if (oldi > 7) render(_R_PAREN);
   _i_ = oldi;
@@ -1116,6 +1116,12 @@ void PrintAbsyn::visitIdent(String s)
   render(s);
 }
 
+void PrintAbsyn::visitCIdent(String s)
+{
+  render(s);
+}
+
+
 ShowAbsyn::ShowAbsyn(void)
 {
   buf_ = 0;
@@ -1172,7 +1178,7 @@ void ShowAbsyn::visitClassDef(ClassDef *p)
   bufAppend('(');
   bufAppend("ClassDef");
   bufAppend(' ');
-  visitIdent(p->ident_);
+  visitCIdent(p->cident_);
   bufAppend(' ');
   bufAppend('[');
   if (p->listmember_)  p->listmember_->accept(this);
@@ -1185,9 +1191,9 @@ void ShowAbsyn::visitClassExt(ClassExt *p)
   bufAppend('(');
   bufAppend("ClassExt");
   bufAppend(' ');
-  visitIdent(p->ident_1);
+  visitCIdent(p->cident_1);
   bufAppend(' ');
-  visitIdent(p->ident_2);
+  visitCIdent(p->cident_2);
   bufAppend(' ');
   bufAppend('[');
   if (p->listmember_)  p->listmember_->accept(this);
@@ -1537,7 +1543,7 @@ void ShowAbsyn::visitClassT(ClassT *p)
   bufAppend('(');
   bufAppend("ClassT");
   bufAppend(' ');
-  visitIdent(p->ident_);
+  visitCIdent(p->cident_);
   bufAppend(')');
 }
 void ShowAbsyn::visitListType(ListType *listtype)
@@ -1604,7 +1610,7 @@ void ShowAbsyn::visitENewObj(ENewObj *p)
   bufAppend('(');
   bufAppend("ENewObj");
   bufAppend(' ');
-  visitIdent(p->ident_);
+  visitCIdent(p->cident_);
   bufAppend(')');
 }
 void ShowAbsyn::visitEVar(EVar *p)
@@ -1863,5 +1869,13 @@ void ShowAbsyn::visitIdent(String s)
   bufAppend(s);
   bufAppend('\"');
 }
+
+void ShowAbsyn::visitCIdent(String s)
+{
+  bufAppend('\"');
+  bufAppend(s);
+  bufAppend('\"');
+}
+
 
 

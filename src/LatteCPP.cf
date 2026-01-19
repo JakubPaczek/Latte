@@ -14,9 +14,9 @@ separator   Arg "," ;
 
 -- top-level class definitions (structs + objects)
 
-ClassDef.   TopDef ::= "class" Ident "{" [Member] "}" ;
+ClassDef.   TopDef ::= "class" CIdent "{" [Member] "}" ;
 
-ClassExt.   TopDef ::= "class" Ident "extends" Ident "{" [Member] "}" ;
+ClassExt.   TopDef ::= "class" CIdent "extends" CIdent "{" [Member] "}" ;
 
 separator   Member "" ;
 
@@ -76,7 +76,7 @@ Str.            BaseType ::= "string" ;
 
 Bool.           BaseType ::= "boolean" ;
 
-ClassT.         BaseType ::= Ident ;
+ClassT.         BaseType ::= CIdent ;
 
 Void.           Type ::= "void" ;
 
@@ -96,7 +96,7 @@ ECast.          Expr7 ::= "(" Type ")" Expr6 ;
 
 ENewArr.        Expr7 ::= "new" BaseType "[" Expr "]" ;
 
-ENewObj.        Expr7 ::= "new" Ident ;
+ENewObj.        Expr7 ::= "new" CIdent ;
 
 EVar.           Expr7 ::= Ident ;
 
@@ -165,3 +165,5 @@ comment "#" ;
 comment "//" ;
 
 comment "/*" "*/" ;
+
+token CIdent (upper (letter | digit | '_')*) ;
