@@ -64,7 +64,6 @@ extern yyscan_t latte_cpp__initialize_lexer(FILE * inp);
   Stmt* stmt_;
   Item* item_;
   ListItem* listitem_;
-  LVal* lval_;
   Type* type_;
   BaseType* basetype_;
   ListType* listtype_;
@@ -147,7 +146,6 @@ extern int yylex(YYSTYPE *lvalp, YYLTYPE *llocp, yyscan_t scanner);
 %type <stmt_> Stmt
 %type <item_> Item
 %type <listitem_> ListItem
-%type <lval_> LVal
 %type <type_> Type
 %type <basetype_> BaseType
 %type <listtype_> ListType
@@ -213,11 +211,6 @@ Item : _IDENT_ { $$ = new NoInit($1); }
 ;
 ListItem : Item { $$ = new ListItem(); $$->push_back($1); }
   | Item _COMMA ListItem { $3->push_back($1); $$ = $3; }
-;
-LVal : _IDENT_ { $$ = new LVar($1); }
-  | LVal _DOT _IDENT_ { $$ = new LField($1, $3); }
-  | LVal _LBRACK Expr _RBRACK { $$ = new LIndex($1, $3); }
-  | _KW_self { $$ = new LSelf(); }
 ;
 Type : BaseType { $$ = new TBase($1); }
   | BaseType _LBRACK _RBRACK { $$ = new TArr($1); }

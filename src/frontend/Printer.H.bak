@@ -75,11 +75,6 @@ class PrintAbsyn : public Visitor
   void visitInit(Init *p);
   void visitListItem(ListItem *p);
   void iterListItem(ListItem::const_iterator i, ListItem::const_iterator j);
-  void visitLVal(LVal *p); /* abstract class */
-  void visitLVar(LVar *p);
-  void visitLField(LField *p);
-  void visitLIndex(LIndex *p);
-  void visitLSelf(LSelf *p);
   void visitType(Type *p); /* abstract class */
   void visitTBase(TBase *p);
   void visitTArr(TArr *p);
@@ -264,11 +259,6 @@ class ShowAbsyn : public Visitor
   void visitInit(Init *p);
   void visitListItem(ListItem *p);
   void iterListItem(ListItem::const_iterator i, ListItem::const_iterator j);
-  void visitLVal(LVal *p); /* abstract class */
-  void visitLVar(LVar *p);
-  void visitLField(LField *p);
-  void visitLIndex(LIndex *p);
-  void visitLSelf(LSelf *p);
   void visitType(Type *p); /* abstract class */
   void visitTBase(TBase *p);
   void visitTArr(TArr *p);

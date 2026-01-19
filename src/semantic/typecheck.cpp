@@ -154,28 +154,6 @@ void TypeChecker::collectSignatures(Program* program)
         }
     }
 
-    // 2) class fields/method signatures
-    // UWAGA: env_.lookupClass zwraca kopię, więc musimy pobrać, zmodyfikować, a potem "nadpisać" w env
-    // Najprościej: użyj tryEnterClass na nagłówkach, a tu: odczyt, modyfikacja i ponowny insert nie zadziała.
-    // Dlatego zakładam, że w Env::classes_ trzymasz wartości i lookupClass zwraca kopię.
-    // W takim wypadku dodaj w Env metodę "updateClass" albo zwracaj referencję.
-    //
-    // Jeżeli NIE masz update/ref, to i tak możesz użyć env_.tryEnterClass ponownie nie zmieniając, ale to nie wprowadzi pól.
-    //
-    // -> Żeby Cię nie blokować, zrobię minimalną wersję:
-    //    - signature-checking robię "na żywo" poprzez env_.lookupField/lookupMethod w hierarchii
-    //    - a właściwe mapy fields/methods przechowuję w Env (wymaga, by Env miał możliwość modyfikacji).
-    //
-    // Jeśli masz Env jak w mojej propozycji, dopisz w nim:
-    //   ClassInfo& getClassRef(const std::string& name);
-    // i wtedy poniższy kod zadziała.
-    //
-    // Jeśli nie masz - wklej później, a teraz przejdź do typecheckowania bazowych funkcji.
-
-    // --- wersja z getClassRef (zalecana) ---
-    // Zakładam: Env::getClassRef(name) -> ClassInfo& (referencja do wpisu w mapie).
-    // Jeśli nie masz, powiedz — dam Ci minimalny patch do Env.
-
     for (TopDef* td : *prog->listtopdef_)
     {
         if (auto* c = dynamic_cast<ClassDef*>(td))
@@ -190,6 +168,10 @@ void TypeChecker::collectSignatures(Program* program)
                 if (auto* f = dynamic_cast<Field*>(m))
                 {
                     std::string fname = f->ident_;
+
+                    if (ci.base && env_.hasFieldInBases(ci.name, fname))
+                    fail("Field '" + fname + "' in class '" + ci.name + "' hides base field (not allowed in objects1)", 0);
+            
                     if (ci.fields.count(fname))
                         fail("Duplicate field '" + fname + "' in class '" + ci.name + "'", 0);
 
@@ -219,9 +201,9 @@ void TypeChecker::collectSignatures(Program* program)
                     }
 
                     // objects1: bez override => jeśli baza ma metodę o tej samej nazwie -> błąd
-                    if (ci.base && env_.lookupMethod(*ci.base, mname).has_value())
+                    if (ci.base && env_.hasMethodInBases(ci.name, mname))
                         fail("Method '" + mname + "' in class '" + ci.name + "' overrides base method (not allowed in objects1)", 0);
-
+                    
                     ci.methods.emplace(mname, mi);
                 }
             }
@@ -231,14 +213,18 @@ void TypeChecker::collectSignatures(Program* program)
             auto& ci = env_.getClassRef(ce->ident_1);
             ci.base = ce->ident_2;
 
-            int fieldIdx = 0;
-            int methodIdx = 0;
+            int fieldIdx  = ci.base ? env_.countAllFields(*ci.base)  : 0;
+            int methodIdx = ci.base ? env_.countAllMethods(*ci.base) : 0;            
 
             for (Member* m : *ce->listmember_)
             {
                 if (auto* f = dynamic_cast<Field*>(m))
                 {
                     std::string fname = f->ident_;
+
+                    if (ci.base && env_.hasFieldInBases(ci.name, fname))
+                    fail("Field '" + fname + "' in class '" + ci.name + "' hides base field (not allowed in objects1)", 0);            
+
                     if (ci.fields.count(fname))
                         fail("Duplicate field '" + fname + "' in class '" + ci.name + "'", 0);
 
@@ -267,7 +253,7 @@ void TypeChecker::collectSignatures(Program* program)
                         }
                     }
 
-                    if (ci.base && env_.lookupMethod(*ci.base, mname).has_value())
+                    if (ci.base && env_.hasMethodInBases(ci.name, mname))
                         fail("Method '" + mname + "' in class '" + ci.name + "' overrides base method (not allowed in objects1)", 0);
 
                     ci.methods.emplace(mname, mi);
@@ -348,9 +334,6 @@ void TypeChecker::checkMethodBody(const std::string& className, Method* m)
     currentClass_ = className;
 
     env_.pushScope();
-
-    // implicit this
-    env_.declareVar("this", VarInfo{ LatteType::Class(className) });
 
     // params
     if (m->listarg_)
@@ -455,8 +438,8 @@ bool TypeChecker::checkStmt(Stmt* stmt, const LatteType& expectedReturn)
 
     if (auto* s = dynamic_cast<Ass*>(stmt))
     {
-        LatteType lType = checkLVal(s->lval_);
-        LatteType rType = checkExpr(s->expr_);
+        LatteType lType = checkLValueExpr(s->expr_1);
+        LatteType rType = checkExpr(s->expr_2);
         if (!isAssignable(lType, rType))
             fail("Type mismatch in assignment", 0);
         return false;
@@ -464,7 +447,7 @@ bool TypeChecker::checkStmt(Stmt* stmt, const LatteType& expectedReturn)
 
     if (auto* s = dynamic_cast<Incr*>(stmt))
     {
-        LatteType lType = checkLVal(s->lval_);
+        LatteType lType = checkLValueExpr(s->expr_);
         if (lType != LatteType::Int())
             fail("Increment '++' requires int l-value", 0);
         return false;
@@ -472,7 +455,7 @@ bool TypeChecker::checkStmt(Stmt* stmt, const LatteType& expectedReturn)
 
     if (auto* s = dynamic_cast<Decr*>(stmt))
     {
-        LatteType lType = checkLVal(s->lval_);
+        LatteType lType = checkLValueExpr(s->expr_);
         if (lType != LatteType::Int())
             fail("Decrement '--' requires int l-value", 0);
         return false;
@@ -581,13 +564,13 @@ LatteType TypeChecker::checkExpr(Expr* expr)
     if (!expr) return LatteType::Unknown();
 
     // (Expr)
-    if (auto* e = dynamic_cast<EParen*>(expr))
-        return checkExpr(e->expr_);
+    if (auto* p = dynamic_cast<EParen*>(expr))
+        return checkExpr(p->expr_);
 
     // null
     if (dynamic_cast<ENull*>(expr))
         return LatteType::Null();
-
+    
     // int / bool / string literals
     if (dynamic_cast<ELitInt*>(expr))
         return LatteType::Int();
@@ -597,6 +580,14 @@ LatteType TypeChecker::checkExpr(Expr* expr)
 
     if (dynamic_cast<EString*>(expr))
         return LatteType::String();
+
+    // self
+    if (dynamic_cast<ESelf*>(expr))
+    {
+        if (!currentClass_.has_value())
+            fail("'self' used outside of a method", 0);
+        return LatteType::Class(*currentClass_);
+    }
 
     // variable
     if (auto* e = dynamic_cast<EVar*>(expr))
@@ -875,37 +866,24 @@ LatteType TypeChecker::checkExpr(Expr* expr)
 
 // ---------------- LVal ----------------
 
-LatteType TypeChecker::checkLVal(LVal* lv)
+LatteType TypeChecker::checkLValueExpr(Expr* e)
 {
-    if (auto* v = dynamic_cast<LVar*>(lv))
+    if (!e) fail("Invalid l-value", 0);
+
+    // x
+    if (auto* v = dynamic_cast<EVar*>(e))
     {
-        std::string name = v->ident_;
-
-        // w metodzie: ident może być polem
-        auto t = lookupVarOrFieldType(name);
+        auto t = lookupVarOrFieldType(v->ident_);
         if (!t.has_value())
-            fail("Assignment to undeclared identifier '" + name + "'", 0);
-
+            fail("Assignment to undeclared identifier '" + std::string(v->ident_) + "'", 0);
         return *t;
     }
 
-    if (auto* f = dynamic_cast<LField*>(lv))
+    // a[i]
+    if (auto* idx = dynamic_cast<EIndex*>(e))
     {
-        LatteType objT = checkLVal(f->lval_); // Expr6 "." Ident
-        if (objT.kind != LatteTypeKind::Class)
-            fail("Field l-value requires class type", 0);
-
-        auto fi = env_.lookupField(objT.name, f->ident_);
-        if (!fi.has_value())
-            fail("Unknown field '" + std::string(f->ident_) + "' in class '" + objT.name + "'", 0);
-
-        return fi->type;
-    }
-
-    if (auto* idx = dynamic_cast<LIndex*>(lv))
-    {
-        LatteType arrT = checkLVal(idx->lval_);
-        LatteType iT   = checkExpr(idx->expr_);
+        LatteType arrT = checkExpr(idx->expr_1);
+        LatteType iT   = checkExpr(idx->expr_2);
 
         if (iT != LatteType::Int())
             fail("Array index must be int", 0);
@@ -916,7 +894,36 @@ LatteType TypeChecker::checkLVal(LVal* lv)
         return *arrT.elem;
     }
 
-    fail("Unknown LVal kind", 0);
+    // obj.field
+    if (auto* f = dynamic_cast<EField*>(e))
+    {
+        LatteType baseT = checkExpr(f->expr_);
+        std::string field = f->ident_;
+
+        // array.length NIE jest l-value
+        if (baseT.kind == LatteTypeKind::Array)
+        {
+            if (field == "length")
+                fail("Cannot assign to array.length", 0);
+            fail("Unknown array field '" + field + "'", 0);
+        }
+
+        if (baseT.kind != LatteTypeKind::Class)
+            fail("Field l-value requires class type", 0);
+
+        auto fi = env_.lookupField(baseT.name, field);
+        if (!fi.has_value())
+            fail("Unknown field '" + field + "' in class '" + baseT.name + "'", 0);
+
+        return fi->type;
+    }
+
+    // self nie jest l-value
+    if (dynamic_cast<ESelf*>(e))
+        fail("'self' is not assignable", 0);
+
+    // reszta: nie jest l-value (np. method call, new, arytmetyka, cast...)
+    fail("Left side of assignment must be a variable, field, or array element", 0);
 }
 
 // ---------------- types ----------------
@@ -924,6 +931,9 @@ LatteType TypeChecker::checkLVal(LVal* lv)
 LatteType TypeChecker::typeFromAst(Type* ty)
 {
     if (!ty) return LatteType::Unknown();
+
+    if (dynamic_cast<Void*>(ty))
+        return LatteType::Void();
 
     if (auto* t = dynamic_cast<TBase*>(ty))
         return baseTypeFromAst(t->basetype_);
@@ -949,7 +959,6 @@ LatteType TypeChecker::baseTypeFromAst(BaseType* bt)
     if (dynamic_cast<Int*>(bt))  return LatteType::Int();
     if (dynamic_cast<Bool*>(bt)) return LatteType::Bool();
     if (dynamic_cast<Str*>(bt))  return LatteType::String();
-    if (dynamic_cast<Void*>(bt)) return LatteType::Void();
 
     if (auto* c = dynamic_cast<ClassT*>(bt))
     {

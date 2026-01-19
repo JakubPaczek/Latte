@@ -28,7 +28,6 @@ class Member;
 class Block;
 class Stmt;
 class Item;
-class LVal;
 class Type;
 class BaseType;
 class Expr;
@@ -51,10 +50,6 @@ class Init;
 class Ass;
 class Incr;
 class Decr;
-class LVar;
-class LField;
-class LIndex;
-class LSelf;
 class Ret;
 class VRet;
 class Cond;
@@ -123,7 +118,6 @@ public:
   virtual void visitBlock(Block *p) = 0;
   virtual void visitStmt(Stmt *p) = 0;
   virtual void visitItem(Item *p) = 0;
-  virtual void visitLVal(LVal *p) = 0;
   virtual void visitType(Type *p) = 0;
   virtual void visitBaseType(BaseType *p) = 0;
   virtual void visitExpr(Expr *p) = 0;
@@ -146,10 +140,6 @@ public:
   virtual void visitAss(Ass *p) = 0;
   virtual void visitIncr(Incr *p) = 0;
   virtual void visitDecr(Decr *p) = 0;
-  virtual void visitLVar(LVar *p) = 0;
-  virtual void visitLField(LField *p) = 0;
-  virtual void visitLIndex(LIndex *p) = 0;
-  virtual void visitLSelf(LSelf *p) = 0;
   virtual void visitRet(Ret *p) = 0;
   virtual void visitVRet(VRet *p) = 0;
   virtual void visitCond(Cond *p) = 0;
@@ -271,13 +261,6 @@ class Item : public Visitable
 {
 public:
   virtual Item *clone() const = 0;
-
-};
-
-class LVal : public Visitable
-{
-public:
-  virtual LVal *clone() const = 0;
 
 };
 
@@ -664,63 +647,6 @@ public:
   virtual void accept(Visitor *v);
   virtual Init *clone() const;
   void swap(Init &);
-};
-
-class LVar : public LVal
-{
-public:
-  Ident ident_;
-
-  LVar(const LVar &);
-  LVar &operator=(const LVar &);
-  LVar(Ident p1);
-  ~LVar();
-  virtual void accept(Visitor *v);
-  virtual LVar *clone() const;
-  void swap(LVar &);
-};
-
-class LField : public LVal
-{
-public:
-  LVal *lval_;
-  Ident ident_;
-
-  LField(const LField &);
-  LField &operator=(const LField &);
-  LField(LVal *p1, Ident p2);
-  ~LField();
-  virtual void accept(Visitor *v);
-  virtual LField *clone() const;
-  void swap(LField &);
-};
-
-class LIndex : public LVal
-{
-public:
-  LVal *lval_;
-  Expr *expr_;
-
-  LIndex(const LIndex &);
-  LIndex &operator=(const LIndex &);
-  LIndex(LVal *p1, Expr *p2);
-  ~LIndex();
-  virtual void accept(Visitor *v);
-  virtual LIndex *clone() const;
-  void swap(LIndex &);
-};
-
-class LSelf : public LVal
-{
-public:
-
-  LSelf(const LSelf &);
-  LSelf &operator=(const LSelf &);
-  LSelf();
-  ~LSelf();
-  virtual void accept(Visitor *v);
-  virtual LSelf *clone() const;
-  void swap(LSelf &);
 };
 
 class TBase : public Type

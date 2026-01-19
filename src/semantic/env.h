@@ -87,15 +87,15 @@ struct FunInfo {
     std::vector<LatteType> args;
 };
 
-// classess
+// classes
 struct FieldInfo {
     LatteType type;
-    int index = -1; //backend offset
+    int index = -1; // backend offset / index
 };
 
 struct MethodInfo {
     FunInfo sig;
-    int index = 1;
+    int index = -1; // FIX: default shouldn't be 1
 };
 
 struct ClassInfo {
@@ -113,7 +113,6 @@ public:
     // global functions
     void enterFunction(const std::string& name, const FunInfo& info);
     std::optional<FunInfo> lookupFunction(const std::string& name) const;
-
     bool tryEnterFunction(const std::string& name, const FunInfo& info);
 
     // variables with scope
@@ -121,23 +120,34 @@ public:
     void popScope();
 
     void declareVar(const std::string& name, const VarInfo& info);
-
     std::optional<VarInfo> lookupVar(const std::string& name) const;
     bool isVarDeclaredInCurrentScope(const std::string& name) const;
-
     bool tryDeclareVar(const std::string& name, const VarInfo& info);
 
-    // classess
+    // classes
     bool tryEnterClass(const ClassInfo& c);
     std::optional<ClassInfo> lookupClass(const std::string& name) const;
 
-    std::optional<FieldInfo> lookupField(const std::string& className, const std::string& fieldName) const;
+    // lookup with inheritance
+    std::optional<FieldInfo>  lookupField (const std::string& className, const std::string& fieldName) const;
     std::optional<MethodInfo> lookupMethod(const std::string& className, const std::string& methodName) const;
+
+    // mutable access (for collectSignatures)
     ClassInfo& getClassRef(const std::string& name);
+
+    // layout helpers (extends): total (self + bases) counts
+    int countAllFields (const std::string& className) const;
+    int countAllMethods(const std::string& className) const;
+
+    // objects1 helpers: check only bases (exclude self)
+    bool hasFieldInBases (const std::string& className, const std::string& fieldName) const;
+    bool hasMethodInBases(const std::string& className, const std::string& methodName) const;
 
 private:
     std::unordered_map<std::string, FunInfo> globalFunctions_;
     std::vector<std::unordered_map<std::string, VarInfo>> scopes_;
-
     std::unordered_map<std::string, ClassInfo> classes_;
+
+    // internal helper
+    const ClassInfo* getClassPtr(const std::string& name) const;
 };

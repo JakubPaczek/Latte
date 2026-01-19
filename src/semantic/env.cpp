@@ -1,6 +1,8 @@
 #include "env.h"
 #include "latte_error.h"
+
 #include <stdexcept>
+#include <unordered_map>
 
 Env::Env()
 {
@@ -27,7 +29,7 @@ std::optional<FunInfo> Env::lookupFunction(const std::string& name) const
     return it->second;
 }
 
-//scopes
+// scopes
 void Env::pushScope()
 {
     scopes_.emplace_back();
@@ -73,7 +75,7 @@ bool Env::isVarDeclaredInCurrentScope(const std::string& name) const
     return current.find(name) != current.end();
 }
 
-// classess
+// classes
 bool Env::tryEnterClass(const ClassInfo& c)
 {
     return classes_.emplace(c.name, c).second;
@@ -87,48 +89,157 @@ std::optional<ClassInfo> Env::lookupClass(const std::string& name) const
     return it->second;
 }
 
-std::optional<FieldInfo> Env::lookupField(const std::string& className, const std::string& fieldName) const
-{
-    auto it = classes_.find(className);
-    if (it == classes_.end()) return std::nullopt;
-
-    const ClassInfo* cur = &it->second;
-    while (cur)
-    {
-        auto fit = cur->fields.find(fieldName);
-        if (fit != cur->fields.end()) return fit->second;
-
-        if (!cur->base) break;
-        auto bit = classes_.find(*cur->base);
-        if (bit == classes_.end()) break;
-        cur = &bit->second;
-    }
-    return std::nullopt;
-}
-
-std::optional<MethodInfo> Env::lookupMethod(const std::string& className, const std::string& methodName) const
-{
-    auto it = classes_.find(className);
-    if (it == classes_.end()) return std::nullopt;
-
-    const ClassInfo* cur = &it->second;
-    while (cur)
-    {
-        auto mit = cur->methods.find(methodName);
-        if (mit != cur->methods.end()) return mit->second;
-
-        if (!cur->base) break;
-        auto bit = classes_.find(*cur->base);
-        if (bit == classes_.end()) break;
-        cur = &bit->second;
-    }
-    return std::nullopt;
-}
-
 ClassInfo& Env::getClassRef(const std::string& name)
 {
     auto it = classes_.find(name);
     if (it == classes_.end())
         throw LatteError("Internal: class not found: " + name, 0);
     return it->second;
+}
+
+const ClassInfo* Env::getClassPtr(const std::string& name) const
+{
+    auto it = classes_.find(name);
+    if (it == classes_.end()) return nullptr;
+    return &it->second;
+}
+
+std::optional<FieldInfo> Env::lookupField(const std::string& className, const std::string& fieldName) const
+{
+    const ClassInfo* cur = getClassPtr(className);
+    if (!cur) return std::nullopt;
+
+    std::unordered_map<std::string, bool> seen;
+
+    while (cur)
+    {
+        if (seen[cur->name])
+            throw LatteError("Cycle in inheritance involving: " + cur->name, 0);
+        seen[cur->name] = true;
+
+        auto fit = cur->fields.find(fieldName);
+        if (fit != cur->fields.end()) return fit->second;
+
+        if (!cur->base) break;
+        cur = getClassPtr(*cur->base);
+        if (!cur) break;
+    }
+    return std::nullopt;
+}
+
+std::optional<MethodInfo> Env::lookupMethod(const std::string& className, const std::string& methodName) const
+{
+    const ClassInfo* cur = getClassPtr(className);
+    if (!cur) return std::nullopt;
+
+    std::unordered_map<std::string, bool> seen;
+
+    while (cur)
+    {
+        if (seen[cur->name])
+            throw LatteError("Cycle in inheritance involving: " + cur->name, 0);
+        seen[cur->name] = true;
+
+        auto mit = cur->methods.find(methodName);
+        if (mit != cur->methods.end()) return mit->second;
+
+        if (!cur->base) break;
+        cur = getClassPtr(*cur->base);
+        if (!cur) break;
+    }
+    return std::nullopt;
+}
+
+// layout helpers: total (self + bases)
+int Env::countAllFields(const std::string& className) const
+{
+    const ClassInfo* cur = getClassPtr(className);
+    if (!cur) return 0;
+
+    int total = 0;
+    std::unordered_map<std::string, bool> seen;
+
+    while (cur)
+    {
+        if (seen[cur->name])
+            throw LatteError("Cycle in inheritance involving: " + cur->name, 0);
+        seen[cur->name] = true;
+
+        total += static_cast<int>(cur->fields.size());
+
+        if (!cur->base) break;
+        cur = getClassPtr(*cur->base);
+        if (!cur) break;
+    }
+    return total;
+}
+
+int Env::countAllMethods(const std::string& className) const
+{
+    const ClassInfo* cur = getClassPtr(className);
+    if (!cur) return 0;
+
+    int total = 0;
+    std::unordered_map<std::string, bool> seen;
+
+    while (cur)
+    {
+        if (seen[cur->name])
+            throw LatteError("Cycle in inheritance involving: " + cur->name, 0);
+        seen[cur->name] = true;
+
+        total += static_cast<int>(cur->methods.size());
+
+        if (!cur->base) break;
+        cur = getClassPtr(*cur->base);
+        if (!cur) break;
+    }
+    return total;
+}
+
+// objects1 helpers: bases only (exclude self)
+bool Env::hasFieldInBases(const std::string& className, const std::string& fieldName) const
+{
+    const ClassInfo* cur = getClassPtr(className);
+    if (!cur || !cur->base) return false;
+
+    std::unordered_map<std::string, bool> seen;
+
+    cur = getClassPtr(*cur->base);
+    while (cur)
+    {
+        if (seen[cur->name])
+            throw LatteError("Cycle in inheritance involving: " + cur->name, 0);
+        seen[cur->name] = true;
+
+        if (cur->fields.count(fieldName)) return true;
+
+        if (!cur->base) break;
+        cur = getClassPtr(*cur->base);
+        if (!cur) break;
+    }
+    return false;
+}
+
+bool Env::hasMethodInBases(const std::string& className, const std::string& methodName) const
+{
+    const ClassInfo* cur = getClassPtr(className);
+    if (!cur || !cur->base) return false;
+
+    std::unordered_map<std::string, bool> seen;
+
+    cur = getClassPtr(*cur->base);
+    while (cur)
+    {
+        if (seen[cur->name])
+            throw LatteError("Cycle in inheritance involving: " + cur->name, 0);
+        seen[cur->name] = true;
+
+        if (cur->methods.count(methodName)) return true;
+
+        if (!cur->base) break;
+        cur = getClassPtr(*cur->base);
+        if (!cur) break;
+    }
+    return false;
 }

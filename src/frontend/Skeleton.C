@@ -288,6 +288,14 @@ void Skeleton::visitClassT(ClassT *class_t)
 
 }
 
+void Skeleton::visitEParen(EParen *e_paren)
+{
+  /* Code For EParen Goes Here */
+
+  if (e_paren->expr_) e_paren->expr_->accept(this);
+
+}
+
 void Skeleton::visitESelf(ESelf *e_self)
 {
   /* Code For ESelf Goes Here */

@@ -65,6 +65,7 @@ class Bool;
 class ClassT;
 class Void;
 class Fun;
+class EParen;
 class ESelf;
 class ENull;
 class ECast;
@@ -155,6 +156,7 @@ public:
   virtual void visitClassT(ClassT *p) = 0;
   virtual void visitVoid(Void *p) = 0;
   virtual void visitFun(Fun *p) = 0;
+  virtual void visitEParen(EParen *p) = 0;
   virtual void visitESelf(ESelf *p) = 0;
   virtual void visitENull(ENull *p) = 0;
   virtual void visitECast(ECast *p) = 0;
@@ -756,6 +758,20 @@ public:
   virtual void accept(Visitor *v);
   virtual ClassT *clone() const;
   void swap(ClassT &);
+};
+
+class EParen : public Expr
+{
+public:
+  Expr *expr_;
+
+  EParen(const EParen &);
+  EParen &operator=(const EParen &);
+  EParen(Expr *p1);
+  ~EParen();
+  virtual void accept(Visitor *v);
+  virtual EParen *clone() const;
+  void swap(EParen &);
 };
 
 class ESelf : public Expr

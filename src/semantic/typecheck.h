@@ -27,14 +27,13 @@ private:
     void checkMethodBody(const std::string& className, Method* m);
 
     bool checkBlock(Block* block, const LatteType& expectedReturn);
-    bool checkStmt(Stmt* stmt, const LatteType& expcectedReturn);
+    bool checkStmt(Stmt* stmt, const LatteType& expectedReturn);
 
     LatteType checkExpr(Expr* expr);
     LatteType typeFromAst(Type* ty);
     LatteType baseTypeFromAst(BaseType* bt);
 
-    // LVal (for Ass/Incr/Decr)
-    LatteType checkLVal(LVal* lv);
+    LatteType checkLValueExpr(Expr* e);
 
     bool isAssignable(const LatteType& dst, const LatteType& src) const;
     bool isSubClassOf(const std::string& sub, const std::string& base) const;

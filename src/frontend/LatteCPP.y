@@ -225,7 +225,8 @@ ListType : /* empty */ { $$ = new ListType(); }
   | Type { $$ = new ListType(); $$->push_back($1); }
   | Type _COMMA ListType { $3->push_back($1); $$ = $3; }
 ;
-Expr7 : _KW_self { $$ = new ESelf(); }
+Expr7 : _LPAREN Expr _RPAREN { $$ = new EParen($2); }
+  | _KW_self { $$ = new ESelf(); }
   | _KW_null { $$ = new ENull(); }
   | _LPAREN Type _RPAREN Expr6 { $$ = new ECast($2, $4); }
   | _KW_new BaseType _LBRACK Expr _RBRACK { $$ = new ENewArr($2, $4); }

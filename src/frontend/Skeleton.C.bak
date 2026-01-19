@@ -17,7 +17,6 @@ void Skeleton::visitMember(Member *t) {} //abstract class
 void Skeleton::visitBlock(Block *t) {} //abstract class
 void Skeleton::visitStmt(Stmt *t) {} //abstract class
 void Skeleton::visitItem(Item *t) {} //abstract class
-void Skeleton::visitLVal(LVal *t) {} //abstract class
 void Skeleton::visitType(Type *t) {} //abstract class
 void Skeleton::visitBaseType(BaseType *t) {} //abstract class
 void Skeleton::visitExpr(Expr *t) {} //abstract class
@@ -225,39 +224,6 @@ void Skeleton::visitInit(Init *init)
 
   visitIdent(init->ident_);
   if (init->expr_) init->expr_->accept(this);
-
-}
-
-void Skeleton::visitLVar(LVar *l_var)
-{
-  /* Code For LVar Goes Here */
-
-  visitIdent(l_var->ident_);
-
-}
-
-void Skeleton::visitLField(LField *l_field)
-{
-  /* Code For LField Goes Here */
-
-  if (l_field->lval_) l_field->lval_->accept(this);
-  visitIdent(l_field->ident_);
-
-}
-
-void Skeleton::visitLIndex(LIndex *l_index)
-{
-  /* Code For LIndex Goes Here */
-
-  if (l_index->lval_) l_index->lval_->accept(this);
-  if (l_index->expr_) l_index->expr_->accept(this);
-
-}
-
-void Skeleton::visitLSelf(LSelf *l_self)
-{
-  /* Code For LSelf Goes Here */
-
 
 }
 

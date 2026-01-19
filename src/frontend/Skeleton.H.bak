@@ -17,7 +17,6 @@ public:
   void visitBlock(Block *p);
   void visitStmt(Stmt *p);
   void visitItem(Item *p);
-  void visitLVal(LVal *p);
   void visitType(Type *p);
   void visitBaseType(BaseType *p);
   void visitExpr(Expr *p);
@@ -40,10 +39,6 @@ public:
   void visitAss(Ass *p);
   void visitIncr(Incr *p);
   void visitDecr(Decr *p);
-  void visitLVar(LVar *p);
-  void visitLField(LField *p);
-  void visitLIndex(LIndex *p);
-  void visitLSelf(LSelf *p);
   void visitRet(Ret *p);
   void visitVRet(VRet *p);
   void visitCond(Cond *p);

@@ -88,6 +88,7 @@ class PrintAbsyn : public Visitor
   void visitListType(ListType *p);
   void iterListType(ListType::const_iterator i, ListType::const_iterator j);
   void visitExpr(Expr *p); /* abstract class */
+  void visitEParen(EParen *p);
   void visitESelf(ESelf *p);
   void visitENull(ENull *p);
   void visitECast(ECast *p);
@@ -272,6 +273,7 @@ class ShowAbsyn : public Visitor
   void visitListType(ListType *p);
   void iterListType(ListType::const_iterator i, ListType::const_iterator j);
   void visitExpr(Expr *p); /* abstract class */
+  void visitEParen(EParen *p);
   void visitESelf(ESelf *p);
   void visitENull(ENull *p);
   void visitECast(ECast *p);

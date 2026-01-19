@@ -86,6 +86,8 @@ separator       Type "," ;
 
 -- Expressions
 
+EParen. Expr7 ::= "(" Expr ")" ;
+
 ESelf.          Expr7 ::= "self" ;
 
 ENull.          Expr7 ::= "null" ;

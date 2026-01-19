@@ -1423,6 +1423,50 @@ ClassT *ClassT::clone() const
 
 
 
+/********************   EParen    ********************/
+EParen::EParen(Expr *p1)
+{
+  expr_ = p1;
+
+}
+
+EParen::EParen(const EParen & other)
+{
+  expr_ = other.expr_->clone();
+
+}
+
+EParen &EParen::operator=(const EParen & other)
+{
+  EParen tmp(other);
+  swap(tmp);
+  return *this;
+}
+
+void EParen::swap(EParen & other)
+{
+  std::swap(expr_, other.expr_);
+
+}
+
+EParen::~EParen()
+{
+  delete(expr_);
+
+}
+
+void EParen::accept(Visitor *v)
+{
+  v->visitEParen(this);
+}
+
+EParen *EParen::clone() const
+{
+  return new EParen(*this);
+}
+
+
+
 /********************   ESelf    ********************/
 ESelf::ESelf()
 {

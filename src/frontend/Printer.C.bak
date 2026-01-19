@@ -542,57 +542,6 @@ void PrintAbsyn::iterListItem(ListItem::const_iterator i, ListItem::const_iterat
   }
 }
 
-void PrintAbsyn::visitLVal(LVal *p) {} //abstract class
-
-void PrintAbsyn::visitLVar(LVar *p)
-{
-  int oldi = _i_;
-  if (oldi > 0) render(_L_PAREN);
-
-  visitIdent(p->ident_);
-
-  if (oldi > 0) render(_R_PAREN);
-  _i_ = oldi;
-}
-
-void PrintAbsyn::visitLField(LField *p)
-{
-  int oldi = _i_;
-  if (oldi > 0) render(_L_PAREN);
-
-  _i_ = 0; p->lval_->accept(this);
-  render('.');
-  visitIdent(p->ident_);
-
-  if (oldi > 0) render(_R_PAREN);
-  _i_ = oldi;
-}
-
-void PrintAbsyn::visitLIndex(LIndex *p)
-{
-  int oldi = _i_;
-  if (oldi > 0) render(_L_PAREN);
-
-  _i_ = 0; p->lval_->accept(this);
-  render('[');
-  _i_ = 0; p->expr_->accept(this);
-  render(']');
-
-  if (oldi > 0) render(_R_PAREN);
-  _i_ = oldi;
-}
-
-void PrintAbsyn::visitLSelf(LSelf *p)
-{
-  int oldi = _i_;
-  if (oldi > 0) render(_L_PAREN);
-
-  render("self");
-
-  if (oldi > 0) render(_R_PAREN);
-  _i_ = oldi;
-}
-
 void PrintAbsyn::visitType(Type *p) {} //abstract class
 
 void PrintAbsyn::visitTBase(TBase *p)
@@ -1514,47 +1463,6 @@ void ShowAbsyn::visitListItem(ListItem *listitem)
   }
 }
 
-void ShowAbsyn::visitLVal(LVal *p) {} //abstract class
-
-void ShowAbsyn::visitLVar(LVar *p)
-{
-  bufAppend('(');
-  bufAppend("LVar");
-  bufAppend(' ');
-  visitIdent(p->ident_);
-  bufAppend(')');
-}
-void ShowAbsyn::visitLField(LField *p)
-{
-  bufAppend('(');
-  bufAppend("LField");
-  bufAppend(' ');
-  bufAppend('[');
-  if (p->lval_)  p->lval_->accept(this);
-  bufAppend(']');
-  bufAppend(' ');
-  visitIdent(p->ident_);
-  bufAppend(')');
-}
-void ShowAbsyn::visitLIndex(LIndex *p)
-{
-  bufAppend('(');
-  bufAppend("LIndex");
-  bufAppend(' ');
-  bufAppend('[');
-  if (p->lval_)  p->lval_->accept(this);
-  bufAppend(']');
-  bufAppend(' ');
-  bufAppend('[');
-  if (p->expr_)  p->expr_->accept(this);
-  bufAppend(']');
-  bufAppend(' ');
-  bufAppend(')');
-}
-void ShowAbsyn::visitLSelf(LSelf *p)
-{
-  bufAppend("LSelf");
-}
 void ShowAbsyn::visitType(Type *p) {} //abstract class
 
 void ShowAbsyn::visitTBase(TBase *p)
