@@ -1,4 +1,5 @@
 #include "env.h"
+#include "latte_error.h"
 #include <stdexcept>
 
 Env::Env()
