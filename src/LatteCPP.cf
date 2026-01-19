@@ -56,6 +56,8 @@ LField.     LVal ::= LVal "." Ident ;
 
 LIndex.     LVal ::= LVal "[" Expr "]" ;
 
+LThis.      LVal ::= "this" ;
+
 Ret.        Stmt ::= "return" Expr ";" ;
 
 VRet.       Stmt ::= "return" ";" ;
@@ -92,51 +94,55 @@ separator       Type "," ;
 
 -- Expressions
 
-EParen.     Expr6 ::= "(" Expr ")" ;
+EThis.          Expr6 ::= "this" ;
 
-ENull.      Expr6 ::= "null" ;
+EParen.         Expr6 ::= "(" Expr ")" ;
 
-ECast.      Expr6 ::= "(" Type ")" Expr6 ;
+ENull.          Expr6 ::= "null" ;
 
-EIndex.     Expr6 ::= Expr6 "[" Expr "]" ;
+ECast.          Expr6 ::= "(" Type ")" Expr6 ;
 
-ENewArr.    Expr6 ::= "new" BaseType "[" Expr "]" ;
+EIndex.         Expr6 ::= Expr6 "[" Expr "]" ;
 
-ENewObj.    Expr6 ::= "new" Ident ;
+ENewArr.        Expr6 ::= "new" BaseType "[" Expr "]" ;
 
-EField.     Expr6 ::= Expr6 "." Ident ;
+ENewObj.        Expr6 ::= "new" Ident ;
 
-EMethod.    Expr6 ::= Expr6 "." Ident "(" [Expr] ")" ;
+ENewObjCall.    Expr6 ::= "new" Ident "(" ")" ;
 
-EVar.       Expr6 ::= Ident ;
+EField.         Expr6 ::= Expr6 "." Ident ;
 
-ELitInt.    Expr6 ::= Integer ;
+EMethod.        Expr6 ::= Expr6 "." Ident "(" [Expr] ")" ;
 
-ELitTrue.   Expr6 ::= "true" ;
+EVar.           Expr6 ::= Ident ;
 
-ELitFalse.  Expr6 ::= "false" ;
+ELitInt.        Expr6 ::= Integer ;
 
-EApp.       Expr6 ::= Ident "(" [Expr] ")" ;
+ELitTrue.       Expr6 ::= "true" ;
 
-EString.    Expr6 ::= String ;
+ELitFalse.      Expr6 ::= "false" ;
 
-Neg.        Expr5 ::= "-" Expr6 ;
+EApp.           Expr6 ::= Ident "(" [Expr] ")" ;
 
-Not.        Expr5 ::= "!" Expr6 ;
+EString.        Expr6 ::= String ;
 
-EMul.       Expr4 ::= Expr4 MulOp Expr5 ;
+Neg.            Expr5 ::= "-" Expr6 ;
 
-EAdd.       Expr3 ::= Expr3 AddOp Expr4 ;
+Not.            Expr5 ::= "!" Expr6 ;
 
-ERel.       Expr2 ::= Expr2 RelOp Expr3 ;
+EMul.           Expr4 ::= Expr4 MulOp Expr5 ;
 
-EAnd.       Expr1 ::= Expr2 "&&" Expr1 ;
+EAdd.           Expr3 ::= Expr3 AddOp Expr4 ;
 
-EOr.        Expr ::= Expr1 "||" Expr ;
+ERel.           Expr2 ::= Expr2 RelOp Expr3 ;
 
-coercions   Expr 6 ;
+EAnd.           Expr1 ::= Expr2 "&&" Expr1 ;
 
-separator   Expr "," ;
+EOr.            Expr ::= Expr1 "||" Expr ;
+
+coercions       Expr 6 ;
+
+separator       Expr "," ;
 
 -- operators
 

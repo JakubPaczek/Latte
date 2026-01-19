@@ -127,6 +127,7 @@ std::optional<MethodInfo> Env::lookupMethod(const std::string& className, const 
 ClassInfo& Env::getClassRef(const std::string& name)
 {
     auto it = classes_.find(name);
-    if (it == classes_.end()) throw std::runtime_error("Unknown class: " + name);
+    if (it == classes_.end())
+        throw LatteError("Internal: class not found: " + name, 0);
     return it->second;
 }

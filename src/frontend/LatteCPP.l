@@ -107,6 +107,7 @@ IDENT [a-zA-Z0-9'_]
 <INITIAL>"null"      	 return _KW_null;
 <INITIAL>"return"      	 return _KW_return;
 <INITIAL>"string"      	 return _KW_string;
+<INITIAL>"this"      	 return _KW_this;
 <INITIAL>"true"      	 return _KW_true;
 <INITIAL>"void"      	 return _KW_void;
 <INITIAL>"while"      	 return _KW_while;

@@ -54,6 +54,7 @@ class Decr;
 class LVar;
 class LField;
 class LIndex;
+class LThis;
 class Ret;
 class VRet;
 class Cond;
@@ -69,12 +70,14 @@ class Bool;
 class Void;
 class ClassT;
 class Fun;
+class EThis;
 class EParen;
 class ENull;
 class ECast;
 class EIndex;
 class ENewArr;
 class ENewObj;
+class ENewObjCall;
 class EField;
 class EMethod;
 class EVar;
@@ -148,6 +151,7 @@ public:
   virtual void visitLVar(LVar *p) = 0;
   virtual void visitLField(LField *p) = 0;
   virtual void visitLIndex(LIndex *p) = 0;
+  virtual void visitLThis(LThis *p) = 0;
   virtual void visitRet(Ret *p) = 0;
   virtual void visitVRet(VRet *p) = 0;
   virtual void visitCond(Cond *p) = 0;
@@ -163,12 +167,14 @@ public:
   virtual void visitVoid(Void *p) = 0;
   virtual void visitClassT(ClassT *p) = 0;
   virtual void visitFun(Fun *p) = 0;
+  virtual void visitEThis(EThis *p) = 0;
   virtual void visitEParen(EParen *p) = 0;
   virtual void visitENull(ENull *p) = 0;
   virtual void visitECast(ECast *p) = 0;
   virtual void visitEIndex(EIndex *p) = 0;
   virtual void visitENewArr(ENewArr *p) = 0;
   virtual void visitENewObj(ENewObj *p) = 0;
+  virtual void visitENewObjCall(ENewObjCall *p) = 0;
   virtual void visitEField(EField *p) = 0;
   virtual void visitEMethod(EMethod *p) = 0;
   virtual void visitEVar(EVar *p) = 0;
@@ -708,6 +714,19 @@ public:
   void swap(LIndex &);
 };
 
+class LThis : public LVal
+{
+public:
+
+  LThis(const LThis &);
+  LThis &operator=(const LThis &);
+  LThis();
+  ~LThis();
+  virtual void accept(Visitor *v);
+  virtual LThis *clone() const;
+  void swap(LThis &);
+};
+
 class TBase : public Type
 {
 public:
@@ -817,6 +836,19 @@ public:
   void swap(ClassT &);
 };
 
+class EThis : public Expr
+{
+public:
+
+  EThis(const EThis &);
+  EThis &operator=(const EThis &);
+  EThis();
+  ~EThis();
+  virtual void accept(Visitor *v);
+  virtual EThis *clone() const;
+  void swap(EThis &);
+};
+
 class EParen : public Expr
 {
 public:
@@ -901,6 +933,20 @@ public:
   virtual void accept(Visitor *v);
   virtual ENewObj *clone() const;
   void swap(ENewObj &);
+};
+
+class ENewObjCall : public Expr
+{
+public:
+  Ident ident_;
+
+  ENewObjCall(const ENewObjCall &);
+  ENewObjCall &operator=(const ENewObjCall &);
+  ENewObjCall(Ident p1);
+  ~ENewObjCall();
+  virtual void accept(Visitor *v);
+  virtual ENewObjCall *clone() const;
+  void swap(ENewObjCall &);
 };
 
 class EField : public Expr

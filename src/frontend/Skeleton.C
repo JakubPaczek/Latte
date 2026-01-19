@@ -254,6 +254,13 @@ void Skeleton::visitLIndex(LIndex *l_index)
 
 }
 
+void Skeleton::visitLThis(LThis *l_this)
+{
+  /* Code For LThis Goes Here */
+
+
+}
+
 void Skeleton::visitTBase(TBase *t_base)
 {
   /* Code For TBase Goes Here */
@@ -315,6 +322,13 @@ void Skeleton::visitClassT(ClassT *class_t)
 
 }
 
+void Skeleton::visitEThis(EThis *e_this)
+{
+  /* Code For EThis Goes Here */
+
+
+}
+
 void Skeleton::visitEParen(EParen *e_paren)
 {
   /* Code For EParen Goes Here */
@@ -362,6 +376,14 @@ void Skeleton::visitENewObj(ENewObj *e_new_obj)
   /* Code For ENewObj Goes Here */
 
   visitIdent(e_new_obj->ident_);
+
+}
+
+void Skeleton::visitENewObjCall(ENewObjCall *e_new_obj_call)
+{
+  /* Code For ENewObjCall Goes Here */
+
+  visitIdent(e_new_obj_call->ident_);
 
 }
 

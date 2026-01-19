@@ -43,6 +43,7 @@ public:
   void visitLVar(LVar *p);
   void visitLField(LField *p);
   void visitLIndex(LIndex *p);
+  void visitLThis(LThis *p);
   void visitRet(Ret *p);
   void visitVRet(VRet *p);
   void visitCond(Cond *p);
@@ -58,12 +59,14 @@ public:
   void visitVoid(Void *p);
   void visitClassT(ClassT *p);
   void visitFun(Fun *p);
+  void visitEThis(EThis *p);
   void visitEParen(EParen *p);
   void visitENull(ENull *p);
   void visitECast(ECast *p);
   void visitEIndex(EIndex *p);
   void visitENewArr(ENewArr *p);
   void visitENewObj(ENewObj *p);
+  void visitENewObjCall(ENewObjCall *p);
   void visitEField(EField *p);
   void visitEMethod(EMethod *p);
   void visitEVar(EVar *p);

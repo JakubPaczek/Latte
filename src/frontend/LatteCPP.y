@@ -124,6 +124,7 @@ extern int yylex(YYSTYPE *lvalp, YYLTYPE *llocp, yyscan_t scanner);
 %token          _KW_null     /* null */
 %token          _KW_return   /* return */
 %token          _KW_string   /* string */
+%token          _KW_this     /* this */
 %token          _KW_true     /* true */
 %token          _KW_void     /* void */
 %token          _KW_while    /* while */
@@ -215,6 +216,7 @@ ListItem : Item { $$ = new ListItem(); $$->push_back($1); }
 LVal : _IDENT_ { $$ = new LVar($1); }
   | LVal _DOT _IDENT_ { $$ = new LField($1, $3); }
   | LVal _LBRACK Expr _RBRACK { $$ = new LIndex($1, $3); }
+  | _KW_this { $$ = new LThis(); }
 ;
 Type : BaseType { $$ = new TBase($1); }
   | BaseType _LBRACK _RBRACK { $$ = new TArr($1); }
@@ -229,12 +231,14 @@ ListType : /* empty */ { $$ = new ListType(); }
   | Type { $$ = new ListType(); $$->push_back($1); }
   | Type _COMMA ListType { $3->push_back($1); $$ = $3; }
 ;
-Expr6 : _LPAREN Expr _RPAREN { $$ = new EParen($2); }
+Expr6 : _KW_this { $$ = new EThis(); }
+  | _LPAREN Expr _RPAREN { $$ = new EParen($2); }
   | _KW_null { $$ = new ENull(); }
   | _LPAREN Type _RPAREN Expr6 { $$ = new ECast($2, $4); }
   | Expr6 _LBRACK Expr _RBRACK { $$ = new EIndex($1, $3); }
   | _KW_new BaseType _LBRACK Expr _RBRACK { $$ = new ENewArr($2, $4); }
   | _KW_new _IDENT_ { $$ = new ENewObj($2); }
+  | _KW_new _IDENT_ _LPAREN _RPAREN { $$ = new ENewObjCall($2); }
   | Expr6 _DOT _IDENT_ { $$ = new EField($1, $3); }
   | Expr6 _DOT _IDENT_ _LPAREN ListExpr _RPAREN { std::reverse($5->begin(),$5->end()) ;$$ = new EMethod($1, $3, $5); }
   | _IDENT_ { $$ = new EVar($1); }

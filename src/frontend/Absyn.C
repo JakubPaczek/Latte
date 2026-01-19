@@ -1222,6 +1222,46 @@ LIndex *LIndex::clone() const
 
 
 
+/********************   LThis    ********************/
+LThis::LThis()
+{
+
+}
+
+LThis::LThis(const LThis & other)
+{
+
+}
+
+LThis &LThis::operator=(const LThis & other)
+{
+  LThis tmp(other);
+  swap(tmp);
+  return *this;
+}
+
+void LThis::swap(LThis & other)
+{
+
+}
+
+LThis::~LThis()
+{
+
+}
+
+void LThis::accept(Visitor *v)
+{
+  v->visitLThis(this);
+}
+
+LThis *LThis::clone() const
+{
+  return new LThis(*this);
+}
+
+
+
 /********************   TBase    ********************/
 TBase::TBase(BaseType *p1)
 {
@@ -1561,6 +1601,46 @@ ClassT *ClassT::clone() const
 
 
 
+/********************   EThis    ********************/
+EThis::EThis()
+{
+
+}
+
+EThis::EThis(const EThis & other)
+{
+
+}
+
+EThis &EThis::operator=(const EThis & other)
+{
+  EThis tmp(other);
+  swap(tmp);
+  return *this;
+}
+
+void EThis::swap(EThis & other)
+{
+
+}
+
+EThis::~EThis()
+{
+
+}
+
+void EThis::accept(Visitor *v)
+{
+  v->visitEThis(this);
+}
+
+EThis *EThis::clone() const
+{
+  return new EThis(*this);
+}
+
+
+
 /********************   EParen    ********************/
 EParen::EParen(Expr *p1)
 {
@@ -1828,6 +1908,49 @@ void ENewObj::accept(Visitor *v)
 ENewObj *ENewObj::clone() const
 {
   return new ENewObj(*this);
+}
+
+
+
+/********************   ENewObjCall    ********************/
+ENewObjCall::ENewObjCall(Ident p1)
+{
+  ident_ = p1;
+
+}
+
+ENewObjCall::ENewObjCall(const ENewObjCall & other)
+{
+  ident_ = other.ident_;
+
+}
+
+ENewObjCall &ENewObjCall::operator=(const ENewObjCall & other)
+{
+  ENewObjCall tmp(other);
+  swap(tmp);
+  return *this;
+}
+
+void ENewObjCall::swap(ENewObjCall & other)
+{
+  std::swap(ident_, other.ident_);
+
+}
+
+ENewObjCall::~ENewObjCall()
+{
+
+}
+
+void ENewObjCall::accept(Visitor *v)
+{
+  v->visitENewObjCall(this);
+}
+
+ENewObjCall *ENewObjCall::clone() const
+{
+  return new ENewObjCall(*this);
 }
 
 

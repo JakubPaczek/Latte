@@ -582,6 +582,17 @@ void PrintAbsyn::visitLIndex(LIndex *p)
   _i_ = oldi;
 }
 
+void PrintAbsyn::visitLThis(LThis *p)
+{
+  int oldi = _i_;
+  if (oldi > 0) render(_L_PAREN);
+
+  render("this");
+
+  if (oldi > 0) render(_R_PAREN);
+  _i_ = oldi;
+}
+
 void PrintAbsyn::visitType(Type *p) {} //abstract class
 
 void PrintAbsyn::visitTBase(TBase *p)
@@ -699,6 +710,17 @@ void PrintAbsyn::iterListType(ListType::const_iterator i, ListType::const_iterat
 
 void PrintAbsyn::visitExpr(Expr *p) {} //abstract class
 
+void PrintAbsyn::visitEThis(EThis *p)
+{
+  int oldi = _i_;
+  if (oldi > 6) render(_L_PAREN);
+
+  render("this");
+
+  if (oldi > 6) render(_R_PAREN);
+  _i_ = oldi;
+}
+
 void PrintAbsyn::visitEParen(EParen *p)
 {
   int oldi = _i_;
@@ -773,6 +795,20 @@ void PrintAbsyn::visitENewObj(ENewObj *p)
 
   render("new");
   visitIdent(p->ident_);
+
+  if (oldi > 6) render(_R_PAREN);
+  _i_ = oldi;
+}
+
+void PrintAbsyn::visitENewObjCall(ENewObjCall *p)
+{
+  int oldi = _i_;
+  if (oldi > 6) render(_L_PAREN);
+
+  render("new");
+  visitIdent(p->ident_);
+  render('(');
+  render(')');
 
   if (oldi > 6) render(_R_PAREN);
   _i_ = oldi;
@@ -1546,6 +1582,10 @@ void ShowAbsyn::visitLIndex(LIndex *p)
   bufAppend(' ');
   bufAppend(')');
 }
+void ShowAbsyn::visitLThis(LThis *p)
+{
+  bufAppend("LThis");
+}
 void ShowAbsyn::visitType(Type *p) {} //abstract class
 
 void ShowAbsyn::visitTBase(TBase *p)
@@ -1621,6 +1661,10 @@ void ShowAbsyn::visitListType(ListType *listtype)
 
 void ShowAbsyn::visitExpr(Expr *p) {} //abstract class
 
+void ShowAbsyn::visitEThis(EThis *p)
+{
+  bufAppend("EThis");
+}
 void ShowAbsyn::visitEParen(EParen *p)
 {
   bufAppend('(');
@@ -1682,6 +1726,15 @@ void ShowAbsyn::visitENewObj(ENewObj *p)
   bufAppend("ENewObj");
   bufAppend(' ');
   visitIdent(p->ident_);
+  bufAppend(')');
+}
+void ShowAbsyn::visitENewObjCall(ENewObjCall *p)
+{
+  bufAppend('(');
+  bufAppend("ENewObjCall");
+  bufAppend(' ');
+  visitIdent(p->ident_);
+  bufAppend(' ');
   bufAppend(')');
 }
 void ShowAbsyn::visitEField(EField *p)

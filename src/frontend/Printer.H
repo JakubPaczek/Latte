@@ -79,6 +79,7 @@ class PrintAbsyn : public Visitor
   void visitLVar(LVar *p);
   void visitLField(LField *p);
   void visitLIndex(LIndex *p);
+  void visitLThis(LThis *p);
   void visitType(Type *p); /* abstract class */
   void visitTBase(TBase *p);
   void visitTArr(TArr *p);
@@ -92,12 +93,14 @@ class PrintAbsyn : public Visitor
   void visitListType(ListType *p);
   void iterListType(ListType::const_iterator i, ListType::const_iterator j);
   void visitExpr(Expr *p); /* abstract class */
+  void visitEThis(EThis *p);
   void visitEParen(EParen *p);
   void visitENull(ENull *p);
   void visitECast(ECast *p);
   void visitEIndex(EIndex *p);
   void visitENewArr(ENewArr *p);
   void visitENewObj(ENewObj *p);
+  void visitENewObjCall(ENewObjCall *p);
   void visitEField(EField *p);
   void visitEMethod(EMethod *p);
   void visitEVar(EVar *p);
@@ -267,6 +270,7 @@ class ShowAbsyn : public Visitor
   void visitLVar(LVar *p);
   void visitLField(LField *p);
   void visitLIndex(LIndex *p);
+  void visitLThis(LThis *p);
   void visitType(Type *p); /* abstract class */
   void visitTBase(TBase *p);
   void visitTArr(TArr *p);
@@ -280,12 +284,14 @@ class ShowAbsyn : public Visitor
   void visitListType(ListType *p);
   void iterListType(ListType::const_iterator i, ListType::const_iterator j);
   void visitExpr(Expr *p); /* abstract class */
+  void visitEThis(EThis *p);
   void visitEParen(EParen *p);
   void visitENull(ENull *p);
   void visitECast(ECast *p);
   void visitEIndex(EIndex *p);
   void visitENewArr(ENewArr *p);
   void visitENewObj(ENewObj *p);
+  void visitENewObjCall(ENewObjCall *p);
   void visitEField(EField *p);
   void visitEMethod(EMethod *p);
   void visitEVar(EVar *p);

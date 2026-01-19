@@ -683,16 +683,27 @@ LatteType TypeChecker::checkExpr(Expr* expr)
     // Expr6 . Ident  (field access)
     if (auto* e = dynamic_cast<EField*>(expr))
     {
-        LatteType objT = checkExpr(e->expr_);
-        if (objT.kind != LatteTypeKind::Class)
+        LatteType baseT = checkExpr(e->expr_);
+        std::string field = e->ident_;
+    
+        // array.length
+        if (baseT.kind == LatteTypeKind::Array)
+        {
+            if (field == "length")
+                return LatteType::Int();
+            fail("Unknown array field '" + field + "'", 0);
+        }
+    
+        // class.field
+        if (baseT.kind != LatteTypeKind::Class)
             fail("Field access requires class type", 0);
-
-        auto fi = env_.lookupField(objT.name, e->ident_);
+    
+        auto fi = env_.lookupField(baseT.name, field);
         if (!fi.has_value())
-            fail("Unknown field '" + std::string(e->ident_) + "' in class '" + objT.name + "'", 0);
-
+            fail("Unknown field '" + field + "' in class '" + baseT.name + "'", 0);
+    
         return fi->type;
-    }
+    }    
 
     // Expr6 . Ident ( [Expr] )  (method call)
     if (auto* e = dynamic_cast<EMethod*>(expr))
