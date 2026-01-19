@@ -95,7 +95,7 @@ class PrintAbsyn : public Visitor
   void visitEParen(EParen *p);
   void visitESelf(ESelf *p);
   void visitENull(ENull *p);
-  void visitECast(ECast *p);
+  void visitENullCast(ENullCast *p);
   void visitENewArr(ENewArr *p);
   void visitENewObj(ENewObj *p);
   void visitEVar(EVar *p);
@@ -104,6 +104,7 @@ class PrintAbsyn : public Visitor
   void visitELitFalse(ELitFalse *p);
   void visitEString(EString *p);
   void visitEApp(EApp *p);
+  void visitEAtom(EAtom *p);
   void visitEIndex(EIndex *p);
   void visitEMethod(EMethod *p);
   void visitEField(EField *p);
@@ -284,7 +285,7 @@ class ShowAbsyn : public Visitor
   void visitEParen(EParen *p);
   void visitESelf(ESelf *p);
   void visitENull(ENull *p);
-  void visitECast(ECast *p);
+  void visitENullCast(ENullCast *p);
   void visitENewArr(ENewArr *p);
   void visitENewObj(ENewObj *p);
   void visitEVar(EVar *p);
@@ -293,6 +294,7 @@ class ShowAbsyn : public Visitor
   void visitELitFalse(ELitFalse *p);
   void visitEString(EString *p);
   void visitEApp(EApp *p);
+  void visitEAtom(EAtom *p);
   void visitEIndex(EIndex *p);
   void visitEMethod(EMethod *p);
   void visitEField(EField *p);

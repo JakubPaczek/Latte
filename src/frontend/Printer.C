@@ -361,7 +361,7 @@ void PrintAbsyn::visitAss(Ass *p)
   int oldi = _i_;
   if (oldi > 0) render(_L_PAREN);
 
-  _i_ = 7; p->expr_1->accept(this);
+  _i_ = 6; p->expr_1->accept(this);
   render('=');
   _i_ = 0; p->expr_2->accept(this);
   render(';');
@@ -375,7 +375,7 @@ void PrintAbsyn::visitIncr(Incr *p)
   int oldi = _i_;
   if (oldi > 0) render(_L_PAREN);
 
-  _i_ = 7; p->expr_->accept(this);
+  _i_ = 6; p->expr_->accept(this);
   render("++");
   render(';');
 
@@ -388,7 +388,7 @@ void PrintAbsyn::visitDecr(Decr *p)
   int oldi = _i_;
   if (oldi > 0) render(_L_PAREN);
 
-  _i_ = 7; p->expr_->accept(this);
+  _i_ = 6; p->expr_->accept(this);
   render("--");
   render(';');
 
@@ -487,7 +487,7 @@ void PrintAbsyn::visitForEach(ForEach *p)
 
   render("for");
   render('(');
-  _i_ = 0; p->type_->accept(this);
+  _i_ = 0; p->basetype_->accept(this);
   visitIdent(p->ident_);
   render(':');
   _i_ = 0; p->expr_->accept(this);
@@ -731,7 +731,7 @@ void PrintAbsyn::visitENull(ENull *p)
   _i_ = oldi;
 }
 
-void PrintAbsyn::visitECast(ECast *p)
+void PrintAbsyn::visitENullCast(ENullCast *p)
 {
   int oldi = _i_;
   if (oldi > 7) render(_L_PAREN);
@@ -841,46 +841,57 @@ void PrintAbsyn::visitEApp(EApp *p)
   _i_ = oldi;
 }
 
+void PrintAbsyn::visitEAtom(EAtom *p)
+{
+  int oldi = _i_;
+  if (oldi > 6) render(_L_PAREN);
+
+  _i_ = 7; p->expr_->accept(this);
+
+  if (oldi > 6) render(_R_PAREN);
+  _i_ = oldi;
+}
+
 void PrintAbsyn::visitEIndex(EIndex *p)
 {
   int oldi = _i_;
-  if (oldi > 7) render(_L_PAREN);
+  if (oldi > 6) render(_L_PAREN);
 
-  _i_ = 7; p->expr_1->accept(this);
+  _i_ = 6; p->expr_1->accept(this);
   render('[');
   _i_ = 0; p->expr_2->accept(this);
   render(']');
 
-  if (oldi > 7) render(_R_PAREN);
+  if (oldi > 6) render(_R_PAREN);
   _i_ = oldi;
 }
 
 void PrintAbsyn::visitEMethod(EMethod *p)
 {
   int oldi = _i_;
-  if (oldi > 7) render(_L_PAREN);
+  if (oldi > 6) render(_L_PAREN);
 
-  _i_ = 7; p->expr_->accept(this);
+  _i_ = 6; p->expr_->accept(this);
   render('.');
   visitIdent(p->ident_);
   render('(');
   _i_ = 0; visitListExpr(p->listexpr_);
   render(')');
 
-  if (oldi > 7) render(_R_PAREN);
+  if (oldi > 6) render(_R_PAREN);
   _i_ = oldi;
 }
 
 void PrintAbsyn::visitEField(EField *p)
 {
   int oldi = _i_;
-  if (oldi > 7) render(_L_PAREN);
+  if (oldi > 6) render(_L_PAREN);
 
-  _i_ = 7; p->expr_->accept(this);
+  _i_ = 6; p->expr_->accept(this);
   render('.');
   visitIdent(p->ident_);
 
-  if (oldi > 7) render(_R_PAREN);
+  if (oldi > 6) render(_R_PAREN);
   _i_ = oldi;
 }
 
@@ -890,7 +901,7 @@ void PrintAbsyn::visitNeg(Neg *p)
   if (oldi > 5) render(_L_PAREN);
 
   render('-');
-  _i_ = 7; p->expr_->accept(this);
+  _i_ = 6; p->expr_->accept(this);
 
   if (oldi > 5) render(_R_PAREN);
   _i_ = oldi;
@@ -902,7 +913,7 @@ void PrintAbsyn::visitNot(Not *p)
   if (oldi > 5) render(_L_PAREN);
 
   render('!');
-  _i_ = 7; p->expr_->accept(this);
+  _i_ = 6; p->expr_->accept(this);
 
   if (oldi > 5) render(_R_PAREN);
   _i_ = oldi;
@@ -1468,7 +1479,7 @@ void ShowAbsyn::visitForEach(ForEach *p)
   bufAppend("ForEach");
   bufAppend(' ');
   bufAppend('[');
-  if (p->type_)  p->type_->accept(this);
+  if (p->basetype_)  p->basetype_->accept(this);
   bufAppend(']');
   bufAppend(' ');
   visitIdent(p->ident_);
@@ -1634,10 +1645,10 @@ void ShowAbsyn::visitENull(ENull *p)
 {
   bufAppend("ENull");
 }
-void ShowAbsyn::visitECast(ECast *p)
+void ShowAbsyn::visitENullCast(ENullCast *p)
 {
   bufAppend('(');
-  bufAppend("ECast");
+  bufAppend("ENullCast");
   bufAppend(' ');
   bufAppend('[');
   if (p->type_)  p->type_->accept(this);
@@ -1714,6 +1725,16 @@ void ShowAbsyn::visitEApp(EApp *p)
   if (p->listexpr_)  p->listexpr_->accept(this);
   bufAppend(']');
   bufAppend(' ');
+  bufAppend(')');
+}
+void ShowAbsyn::visitEAtom(EAtom *p)
+{
+  bufAppend('(');
+  bufAppend("EAtom");
+  bufAppend(' ');
+  bufAppend('[');
+  if (p->expr_)  p->expr_->accept(this);
+  bufAppend(']');
   bufAppend(')');
 }
 void ShowAbsyn::visitEIndex(EIndex *p)

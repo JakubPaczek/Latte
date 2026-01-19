@@ -204,7 +204,7 @@ void Skeleton::visitForEach(ForEach *for_each)
 {
   /* Code For ForEach Goes Here */
 
-  if (for_each->type_) for_each->type_->accept(this);
+  if (for_each->basetype_) for_each->basetype_->accept(this);
   visitIdent(for_each->ident_);
   if (for_each->expr_) for_each->expr_->accept(this);
   if (for_each->stmt_) for_each->stmt_->accept(this);
@@ -334,12 +334,12 @@ void Skeleton::visitENull(ENull *e_null)
 
 }
 
-void Skeleton::visitECast(ECast *e_cast)
+void Skeleton::visitENullCast(ENullCast *e_null_cast)
 {
-  /* Code For ECast Goes Here */
+  /* Code For ENullCast Goes Here */
 
-  if (e_cast->type_) e_cast->type_->accept(this);
-  if (e_cast->expr_) e_cast->expr_->accept(this);
+  if (e_null_cast->type_) e_null_cast->type_->accept(this);
+  if (e_null_cast->expr_) e_null_cast->expr_->accept(this);
 
 }
 
@@ -404,6 +404,14 @@ void Skeleton::visitEApp(EApp *e_app)
 
   visitIdent(e_app->ident_);
   if (e_app->listexpr_) e_app->listexpr_->accept(this);
+
+}
+
+void Skeleton::visitEAtom(EAtom *e_atom)
+{
+  /* Code For EAtom Goes Here */
+
+  if (e_atom->expr_) e_atom->expr_->accept(this);
 
 }
 

@@ -152,13 +152,13 @@ extern int yylex(YYSTYPE *lvalp, YYLTYPE *llocp, yyscan_t scanner);
 %type <basetype_> BaseType
 %type <listtype_> ListType
 %type <expr_> Expr7
+%type <expr_> Expr6
 %type <expr_> Expr5
 %type <expr_> Expr4
 %type <expr_> Expr3
 %type <expr_> Expr2
 %type <expr_> Expr1
 %type <expr_> Expr
-%type <expr_> Expr6
 %type <listexpr_> ListExpr
 %type <addop_> AddOp
 %type <mulop_> MulOp
@@ -197,16 +197,16 @@ ListStmt : /* empty */ { $$ = new ListStmt(); }
 Stmt : _SEMI { $$ = new Empty(); }
   | Block { $$ = new BStmt($1); }
   | DType ListItem _SEMI { std::reverse($2->begin(),$2->end()) ;$$ = new Decl($1, $2); }
-  | Expr7 _EQ Expr _SEMI { $$ = new Ass($1, $3); }
-  | Expr7 _DPLUS _SEMI { $$ = new Incr($1); }
-  | Expr7 _DMINUS _SEMI { $$ = new Decr($1); }
+  | Expr6 _EQ Expr _SEMI { $$ = new Ass($1, $3); }
+  | Expr6 _DPLUS _SEMI { $$ = new Incr($1); }
+  | Expr6 _DMINUS _SEMI { $$ = new Decr($1); }
   | _KW_return Expr _SEMI { $$ = new Ret($2); }
   | _KW_return _SEMI { $$ = new VRet(); }
   | _KW_if _LPAREN Expr _RPAREN Stmt { $$ = new Cond($3, $5); }
   | _KW_if _LPAREN Expr _RPAREN Stmt _KW_else Stmt { $$ = new CondElse($3, $5, $7); }
   | _KW_while _LPAREN Expr _RPAREN Stmt { $$ = new While($3, $5); }
   | Expr _SEMI { $$ = new SExp($1); }
-  | _KW_for _LPAREN Type _IDENT_ _COLON Expr _RPAREN Stmt { $$ = new ForEach($3, $4, $6, $8); }
+  | _KW_for _LPAREN BaseType _IDENT_ _COLON Expr _RPAREN Stmt { $$ = new ForEach($3, $4, $6, $8); }
 ;
 Item : _IDENT_ { $$ = new NoInit($1); }
   | _IDENT_ _EQ Expr { $$ = new Init($1, $3); }
@@ -234,7 +234,7 @@ ListType : /* empty */ { $$ = new ListType(); }
 Expr7 : _LPAREN Expr _RPAREN { $$ = new EParen($2); }
   | _KW_self { $$ = new ESelf(); }
   | _KW_null { $$ = new ENull(); }
-  | _LPAREN Type _RPAREN Expr7 { $$ = new ECast($2, $4); }
+  | _LPAREN Type _RPAREN Expr7 { $$ = new ENullCast($2, $4); }
   | _KW_new BaseType _LBRACK Expr _RBRACK { $$ = new ENewArr($2, $4); }
   | _KW_new _IDENT_ { $$ = new ENewObj($2); }
   | _IDENT_ { $$ = new EVar($1); }
@@ -243,13 +243,16 @@ Expr7 : _LPAREN Expr _RPAREN { $$ = new EParen($2); }
   | _KW_false { $$ = new ELitFalse(); }
   | _STRING_ { $$ = new EString($1); }
   | _IDENT_ _LPAREN ListExpr _RPAREN { std::reverse($3->begin(),$3->end()) ;$$ = new EApp($1, $3); }
-  | Expr7 _LBRACK Expr _RBRACK { $$ = new EIndex($1, $3); }
-  | Expr7 _DOT _IDENT_ _LPAREN ListExpr _RPAREN { std::reverse($5->begin(),$5->end()) ;$$ = new EMethod($1, $3, $5); }
-  | Expr7 _DOT _IDENT_ { $$ = new EField($1, $3); }
   | _LPAREN Expr _RPAREN { $$ = $2; }
 ;
-Expr5 : _MINUS Expr7 { $$ = new Neg($2); }
-  | _BANG Expr7 { $$ = new Not($2); }
+Expr6 : Expr7 { $$ = new EAtom($1); }
+  | Expr6 _LBRACK Expr _RBRACK { $$ = new EIndex($1, $3); }
+  | Expr6 _DOT _IDENT_ _LPAREN ListExpr _RPAREN { std::reverse($5->begin(),$5->end()) ;$$ = new EMethod($1, $3, $5); }
+  | Expr6 _DOT _IDENT_ { $$ = new EField($1, $3); }
+  | Expr7 { $$ = $1; }
+;
+Expr5 : _MINUS Expr6 { $$ = new Neg($2); }
+  | _BANG Expr6 { $$ = new Not($2); }
   | Expr6 { $$ = $1; }
 ;
 Expr4 : Expr4 MulOp Expr5 { $$ = new EMul($1, $2, $3); }
@@ -266,8 +269,6 @@ Expr1 : Expr2 _DAMP Expr1 { $$ = new EAnd($1, $3); }
 ;
 Expr : Expr1 _DBAR Expr { $$ = new EOr($1, $3); }
   | Expr1 { $$ = $1; }
-;
-Expr6 : Expr7 { $$ = $1; }
 ;
 ListExpr : /* empty */ { $$ = new ListExpr(); }
   | Expr { $$ = new ListExpr(); $$->push_back($1); }

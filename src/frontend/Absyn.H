@@ -72,7 +72,7 @@ class Fun;
 class EParen;
 class ESelf;
 class ENull;
-class ECast;
+class ENullCast;
 class ENewArr;
 class ENewObj;
 class EVar;
@@ -81,6 +81,7 @@ class ELitTrue;
 class ELitFalse;
 class EString;
 class EApp;
+class EAtom;
 class EIndex;
 class EMethod;
 class EField;
@@ -167,7 +168,7 @@ public:
   virtual void visitEParen(EParen *p) = 0;
   virtual void visitESelf(ESelf *p) = 0;
   virtual void visitENull(ENull *p) = 0;
-  virtual void visitECast(ECast *p) = 0;
+  virtual void visitENullCast(ENullCast *p) = 0;
   virtual void visitENewArr(ENewArr *p) = 0;
   virtual void visitENewObj(ENewObj *p) = 0;
   virtual void visitEVar(EVar *p) = 0;
@@ -176,6 +177,7 @@ public:
   virtual void visitELitFalse(ELitFalse *p) = 0;
   virtual void visitEString(EString *p) = 0;
   virtual void visitEApp(EApp *p) = 0;
+  virtual void visitEAtom(EAtom *p) = 0;
   virtual void visitEIndex(EIndex *p) = 0;
   virtual void visitEMethod(EMethod *p) = 0;
   virtual void visitEField(EField *p) = 0;
@@ -623,14 +625,14 @@ public:
 class ForEach : public Stmt
 {
 public:
-  Type *type_;
+  BaseType *basetype_;
   Ident ident_;
   Expr *expr_;
   Stmt *stmt_;
 
   ForEach(const ForEach &);
   ForEach &operator=(const ForEach &);
-  ForEach(Type *p1, Ident p2, Expr *p3, Stmt *p4);
+  ForEach(BaseType *p1, Ident p2, Expr *p3, Stmt *p4);
   ~ForEach();
   virtual void accept(Visitor *v);
   virtual ForEach *clone() const;
@@ -856,19 +858,19 @@ public:
   void swap(ENull &);
 };
 
-class ECast : public Expr
+class ENullCast : public Expr
 {
 public:
   Type *type_;
   Expr *expr_;
 
-  ECast(const ECast &);
-  ECast &operator=(const ECast &);
-  ECast(Type *p1, Expr *p2);
-  ~ECast();
+  ENullCast(const ENullCast &);
+  ENullCast &operator=(const ENullCast &);
+  ENullCast(Type *p1, Expr *p2);
+  ~ENullCast();
   virtual void accept(Visitor *v);
-  virtual ECast *clone() const;
-  void swap(ECast &);
+  virtual ENullCast *clone() const;
+  void swap(ENullCast &);
 };
 
 class ENewArr : public Expr
@@ -981,6 +983,20 @@ public:
   virtual void accept(Visitor *v);
   virtual EApp *clone() const;
   void swap(EApp &);
+};
+
+class EAtom : public Expr
+{
+public:
+  Expr *expr_;
+
+  EAtom(const EAtom &);
+  EAtom &operator=(const EAtom &);
+  EAtom(Expr *p1);
+  ~EAtom();
+  virtual void accept(Visitor *v);
+  virtual EAtom *clone() const;
+  void swap(EAtom &);
 };
 
 class EIndex : public Expr

@@ -44,11 +44,11 @@ Init.       Item ::= Ident "=" Expr ;
 
 separator   nonempty Item "," ;
 
-Ass.        Stmt ::= Expr7 "=" Expr ";" ;
+Ass.        Stmt ::= Expr6 "=" Expr ";" ;
 
-Incr.       Stmt ::= Expr7 "++" ";" ;
+Incr.       Stmt ::= Expr6 "++" ";" ;
 
-Decr.       Stmt ::= Expr7 "--" ";" ;
+Decr.       Stmt ::= Expr6 "--" ";" ;
 
 Ret.        Stmt ::= "return" Expr ";" ;
 
@@ -62,7 +62,7 @@ While.      Stmt ::= "while" "(" Expr ")" Stmt ;
 
 SExp.       Stmt ::= Expr ";" ;
 
-ForEach.    Stmt ::= "for" "(" Type Ident ":" Expr ")" Stmt ;
+ForEach.    Stmt ::= "for" "(" BaseType Ident ":" Expr ")" Stmt ;
 
 -- Types
 
@@ -92,13 +92,13 @@ separator       Type "," ;
 
 -- Expressions
 
-EParen. Expr7 ::= "(" Expr ")" ;
+EParen.         Expr7 ::= "(" Expr ")" ;
 
 ESelf.          Expr7 ::= "self" ;
 
 ENull.          Expr7 ::= "null" ;
 
-ECast.          Expr7 ::= "(" Type ")" Expr7 ;
+ENullCast.      Expr7 ::= "(" Type ")" Expr7 ;
 
 ENewArr.        Expr7 ::= "new" BaseType "[" Expr "]" ;
 
@@ -116,15 +116,17 @@ EString.        Expr7 ::= String ;
 
 EApp.           Expr7 ::= Ident "(" [Expr] ")" ;
 
-EIndex.         Expr7 ::= Expr7 "[" Expr "]" ;
+EAtom.          Expr6 ::= Expr7 ;
 
-EMethod.        Expr7 ::= Expr7 "." Ident "(" [Expr] ")" ;
+EIndex.         Expr6 ::= Expr6 "[" Expr "]" ;
 
-EField.         Expr7 ::= Expr7 "." Ident ;
+EMethod.        Expr6 ::= Expr6 "." Ident "(" [Expr] ")" ;
 
-Neg.            Expr5 ::= "-" Expr7 ;
+EField.         Expr6 ::= Expr6 "." Ident ;
 
-Not.            Expr5 ::= "!" Expr7 ;
+Neg.            Expr5 ::= "-" Expr6 ;
+
+Not.            Expr5 ::= "!" Expr6 ;
 
 EMul.           Expr4 ::= Expr4 MulOp Expr5 ;
 

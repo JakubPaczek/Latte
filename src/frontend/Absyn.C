@@ -940,9 +940,9 @@ SExp *SExp::clone() const
 
 
 /********************   ForEach    ********************/
-ForEach::ForEach(Type *p1, Ident p2, Expr *p3, Stmt *p4)
+ForEach::ForEach(BaseType *p1, Ident p2, Expr *p3, Stmt *p4)
 {
-  type_ = p1;
+  basetype_ = p1;
   ident_ = p2;
   expr_ = p3;
   stmt_ = p4;
@@ -951,7 +951,7 @@ ForEach::ForEach(Type *p1, Ident p2, Expr *p3, Stmt *p4)
 
 ForEach::ForEach(const ForEach & other)
 {
-  type_ = other.type_->clone();
+  basetype_ = other.basetype_->clone();
   ident_ = other.ident_;
   expr_ = other.expr_->clone();
   stmt_ = other.stmt_->clone();
@@ -967,7 +967,7 @@ ForEach &ForEach::operator=(const ForEach & other)
 
 void ForEach::swap(ForEach & other)
 {
-  std::swap(type_, other.type_);
+  std::swap(basetype_, other.basetype_);
   std::swap(ident_, other.ident_);
   std::swap(expr_, other.expr_);
   std::swap(stmt_, other.stmt_);
@@ -976,7 +976,7 @@ void ForEach::swap(ForEach & other)
 
 ForEach::~ForEach()
 {
-  delete(type_);
+  delete(basetype_);
   delete(expr_);
   delete(stmt_);
 
@@ -1675,50 +1675,50 @@ ENull *ENull::clone() const
 
 
 
-/********************   ECast    ********************/
-ECast::ECast(Type *p1, Expr *p2)
+/********************   ENullCast    ********************/
+ENullCast::ENullCast(Type *p1, Expr *p2)
 {
   type_ = p1;
   expr_ = p2;
 
 }
 
-ECast::ECast(const ECast & other)
+ENullCast::ENullCast(const ENullCast & other)
 {
   type_ = other.type_->clone();
   expr_ = other.expr_->clone();
 
 }
 
-ECast &ECast::operator=(const ECast & other)
+ENullCast &ENullCast::operator=(const ENullCast & other)
 {
-  ECast tmp(other);
+  ENullCast tmp(other);
   swap(tmp);
   return *this;
 }
 
-void ECast::swap(ECast & other)
+void ENullCast::swap(ENullCast & other)
 {
   std::swap(type_, other.type_);
   std::swap(expr_, other.expr_);
 
 }
 
-ECast::~ECast()
+ENullCast::~ENullCast()
 {
   delete(type_);
   delete(expr_);
 
 }
 
-void ECast::accept(Visitor *v)
+void ENullCast::accept(Visitor *v)
 {
-  v->visitECast(this);
+  v->visitENullCast(this);
 }
 
-ECast *ECast::clone() const
+ENullCast *ENullCast::clone() const
 {
-  return new ECast(*this);
+  return new ENullCast(*this);
 }
 
 
@@ -2066,6 +2066,50 @@ void EApp::accept(Visitor *v)
 EApp *EApp::clone() const
 {
   return new EApp(*this);
+}
+
+
+
+/********************   EAtom    ********************/
+EAtom::EAtom(Expr *p1)
+{
+  expr_ = p1;
+
+}
+
+EAtom::EAtom(const EAtom & other)
+{
+  expr_ = other.expr_->clone();
+
+}
+
+EAtom &EAtom::operator=(const EAtom & other)
+{
+  EAtom tmp(other);
+  swap(tmp);
+  return *this;
+}
+
+void EAtom::swap(EAtom & other)
+{
+  std::swap(expr_, other.expr_);
+
+}
+
+EAtom::~EAtom()
+{
+  delete(expr_);
+
+}
+
+void EAtom::accept(Visitor *v)
+{
+  v->visitEAtom(this);
+}
+
+EAtom *EAtom::clone() const
+{
+  return new EAtom(*this);
 }
 
 
