@@ -22,10 +22,10 @@ enum class LatteTypeKind {
 
 struct LatteType {
     LatteTypeKind kind = LatteTypeKind::Unknown;
-
     std::string name; // for Class
-
     std::shared_ptr<LatteType> elem; // for Array
+
+    explicit LatteType(LatteTypeKind k) : kind(k) {}
 
     bool operator==(const LatteType& other) const noexcept
     {
@@ -44,11 +44,11 @@ struct LatteType {
         return !(*this == other);
     }
 
-    static LatteType Int() { return { LatteTypeKind::Int }; }
+    static LatteType Int()      { return { LatteTypeKind::Int }; }
     static LatteType Bool()     { return { LatteTypeKind::Bool }; }
     static LatteType String()   { return { LatteTypeKind::String }; }
     static LatteType Void()     { return { LatteTypeKind::Void }; }
-    static LatteType Unknown() { return { LatteTypeKind::Unknown }; }
+    static LatteType Unknown()  { return { LatteTypeKind::Unknown }; }
 
     static LatteType Class(std::string n)
     {
