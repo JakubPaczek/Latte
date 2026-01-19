@@ -544,6 +544,17 @@ void PrintAbsyn::iterListItem(ListItem::const_iterator i, ListItem::const_iterat
 
 void PrintAbsyn::visitDType(DType *p) {} //abstract class
 
+void PrintAbsyn::visitDVoid(DVoid *p)
+{
+  int oldi = _i_;
+  if (oldi > 0) render(_L_PAREN);
+
+  render("void");
+
+  if (oldi > 0) render(_R_PAREN);
+  _i_ = oldi;
+}
+
 void PrintAbsyn::visitDTypeBase(DTypeBase *p)
 {
   int oldi = _i_;
@@ -1504,6 +1515,10 @@ void ShowAbsyn::visitListItem(ListItem *listitem)
 
 void ShowAbsyn::visitDType(DType *p) {} //abstract class
 
+void ShowAbsyn::visitDVoid(DVoid *p)
+{
+  bufAppend("DVoid");
+}
 void ShowAbsyn::visitDTypeBase(DTypeBase *p)
 {
   bufAppend('(');

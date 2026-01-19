@@ -66,9 +66,11 @@ ForEach.    Stmt ::= "for" "(" Type Ident ":" Expr ")" Stmt ;
 
 -- Types
 
+DVoid.          DType ::= "void" ;
+
 DTypeBase.      DType ::= BaseType ;
 
-DTypeArr.  DType ::= BaseType "[" "]" ;
+DTypeArr.       DType ::= BaseType "[" "]" ;
 
 TBase.          Type ::= BaseType ;
 

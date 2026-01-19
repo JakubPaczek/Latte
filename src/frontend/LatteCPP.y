@@ -214,7 +214,8 @@ Item : _IDENT_ { $$ = new NoInit($1); }
 ListItem : Item { $$ = new ListItem(); $$->push_back($1); }
   | Item _COMMA ListItem { $3->push_back($1); $$ = $3; }
 ;
-DType : BaseType { $$ = new DTypeBase($1); }
+DType : _KW_void { $$ = new DVoid(); }
+  | BaseType { $$ = new DTypeBase($1); }
   | BaseType _LBRACK _RBRACK { $$ = new DTypeArr($1); }
 ;
 Type : BaseType { $$ = new TBase($1); }

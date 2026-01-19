@@ -228,6 +228,13 @@ void Skeleton::visitInit(Init *init)
 
 }
 
+void Skeleton::visitDVoid(DVoid *d_void)
+{
+  /* Code For DVoid Goes Here */
+
+
+}
+
 void Skeleton::visitDTypeBase(DTypeBase *d_type_base)
 {
   /* Code For DTypeBase Goes Here */

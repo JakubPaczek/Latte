@@ -17,6 +17,7 @@ public:
   void visitBlock(Block *p);
   void visitStmt(Stmt *p);
   void visitItem(Item *p);
+  void visitDType(DType *p);
   void visitType(Type *p);
   void visitBaseType(BaseType *p);
   void visitExpr(Expr *p);
@@ -46,6 +47,8 @@ public:
   void visitWhile(While *p);
   void visitSExp(SExp *p);
   void visitForEach(ForEach *p);
+  void visitDTypeBase(DTypeBase *p);
+  void visitDTypeArr(DTypeArr *p);
   void visitTBase(TBase *p);
   void visitTArr(TArr *p);
   void visitInt(Int *p);
@@ -100,7 +103,6 @@ public:
   void visitDouble(Double x);
   void visitString(String x);
   void visitIdent(Ident x);
-  void visitCIdent(CIdent x);
 
 };
 

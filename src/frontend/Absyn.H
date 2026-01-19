@@ -58,6 +58,7 @@ class CondElse;
 class While;
 class SExp;
 class ForEach;
+class DVoid;
 class DTypeBase;
 class DTypeArr;
 class TBase;
@@ -152,6 +153,7 @@ public:
   virtual void visitWhile(While *p) = 0;
   virtual void visitSExp(SExp *p) = 0;
   virtual void visitForEach(ForEach *p) = 0;
+  virtual void visitDVoid(DVoid *p) = 0;
   virtual void visitDTypeBase(DTypeBase *p) = 0;
   virtual void visitDTypeArr(DTypeArr *p) = 0;
   virtual void visitTBase(TBase *p) = 0;
@@ -662,6 +664,19 @@ public:
   virtual void accept(Visitor *v);
   virtual Init *clone() const;
   void swap(Init &);
+};
+
+class DVoid : public DType
+{
+public:
+
+  DVoid(const DVoid &);
+  DVoid &operator=(const DVoid &);
+  DVoid();
+  ~DVoid();
+  virtual void accept(Visitor *v);
+  virtual DVoid *clone() const;
+  void swap(DVoid &);
 };
 
 class DTypeBase : public DType

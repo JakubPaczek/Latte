@@ -76,6 +76,7 @@ class PrintAbsyn : public Visitor
   void visitListItem(ListItem *p);
   void iterListItem(ListItem::const_iterator i, ListItem::const_iterator j);
   void visitDType(DType *p); /* abstract class */
+  void visitDVoid(DVoid *p);
   void visitDTypeBase(DTypeBase *p);
   void visitDTypeArr(DTypeArr *p);
   void visitType(Type *p); /* abstract class */
@@ -264,6 +265,7 @@ class ShowAbsyn : public Visitor
   void visitListItem(ListItem *p);
   void iterListItem(ListItem::const_iterator i, ListItem::const_iterator j);
   void visitDType(DType *p); /* abstract class */
+  void visitDVoid(DVoid *p);
   void visitDTypeBase(DTypeBase *p);
   void visitDTypeArr(DTypeArr *p);
   void visitType(Type *p); /* abstract class */

@@ -1084,6 +1084,46 @@ Init *Init::clone() const
 
 
 
+/********************   DVoid    ********************/
+DVoid::DVoid()
+{
+
+}
+
+DVoid::DVoid(const DVoid & other)
+{
+
+}
+
+DVoid &DVoid::operator=(const DVoid & other)
+{
+  DVoid tmp(other);
+  swap(tmp);
+  return *this;
+}
+
+void DVoid::swap(DVoid & other)
+{
+
+}
+
+DVoid::~DVoid()
+{
+
+}
+
+void DVoid::accept(Visitor *v)
+{
+  v->visitDVoid(this);
+}
+
+DVoid *DVoid::clone() const
+{
+  return new DVoid(*this);
+}
+
+
+
 /********************   DTypeBase    ********************/
 DTypeBase::DTypeBase(BaseType *p1)
 {

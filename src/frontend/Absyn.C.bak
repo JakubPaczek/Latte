@@ -51,9 +51,9 @@ Prog *Prog::clone() const
 
 
 /********************   FnDef    ********************/
-FnDef::FnDef(Type *p1, Ident p2, ListArg *p3, Block *p4)
+FnDef::FnDef(DType *p1, Ident p2, ListArg *p3, Block *p4)
 {
-  type_ = p1;
+  dtype_ = p1;
   ident_ = p2;
   listarg_ = p3;
   block_ = p4;
@@ -62,7 +62,7 @@ FnDef::FnDef(Type *p1, Ident p2, ListArg *p3, Block *p4)
 
 FnDef::FnDef(const FnDef & other)
 {
-  type_ = other.type_->clone();
+  dtype_ = other.dtype_->clone();
   ident_ = other.ident_;
   listarg_ = other.listarg_->clone();
   block_ = other.block_->clone();
@@ -78,7 +78,7 @@ FnDef &FnDef::operator=(const FnDef & other)
 
 void FnDef::swap(FnDef & other)
 {
-  std::swap(type_, other.type_);
+  std::swap(dtype_, other.dtype_);
   std::swap(ident_, other.ident_);
   std::swap(listarg_, other.listarg_);
   std::swap(block_, other.block_);
@@ -87,7 +87,7 @@ void FnDef::swap(FnDef & other)
 
 FnDef::~FnDef()
 {
-  delete(type_);
+  delete(dtype_);
   delete(listarg_);
   delete(block_);
 
@@ -106,16 +106,16 @@ FnDef *FnDef::clone() const
 
 
 /********************   ClassDef    ********************/
-ClassDef::ClassDef(CIdent p1, ListMember *p2)
+ClassDef::ClassDef(Ident p1, ListMember *p2)
 {
-  cident_ = p1;
+  ident_ = p1;
   listmember_ = p2;
 
 }
 
 ClassDef::ClassDef(const ClassDef & other)
 {
-  cident_ = other.cident_;
+  ident_ = other.ident_;
   listmember_ = other.listmember_->clone();
 
 }
@@ -129,7 +129,7 @@ ClassDef &ClassDef::operator=(const ClassDef & other)
 
 void ClassDef::swap(ClassDef & other)
 {
-  std::swap(cident_, other.cident_);
+  std::swap(ident_, other.ident_);
   std::swap(listmember_, other.listmember_);
 
 }
@@ -153,18 +153,18 @@ ClassDef *ClassDef::clone() const
 
 
 /********************   ClassExt    ********************/
-ClassExt::ClassExt(CIdent p1, CIdent p2, ListMember *p3)
+ClassExt::ClassExt(Ident p1, Ident p2, ListMember *p3)
 {
-  cident_1 = p1;
-  cident_2 = p2;
+  ident_1 = p1;
+  ident_2 = p2;
   listmember_ = p3;
 
 }
 
 ClassExt::ClassExt(const ClassExt & other)
 {
-  cident_1 = other.cident_1;
-  cident_2 = other.cident_2;
+  ident_1 = other.ident_1;
+  ident_2 = other.ident_2;
   listmember_ = other.listmember_->clone();
 
 }
@@ -178,8 +178,8 @@ ClassExt &ClassExt::operator=(const ClassExt & other)
 
 void ClassExt::swap(ClassExt & other)
 {
-  std::swap(cident_1, other.cident_1);
-  std::swap(cident_2, other.cident_2);
+  std::swap(ident_1, other.ident_1);
+  std::swap(ident_2, other.ident_2);
   std::swap(listmember_, other.listmember_);
 
 }
@@ -203,16 +203,16 @@ ClassExt *ClassExt::clone() const
 
 
 /********************   Ar    ********************/
-Ar::Ar(Type *p1, Ident p2)
+Ar::Ar(DType *p1, Ident p2)
 {
-  type_ = p1;
+  dtype_ = p1;
   ident_ = p2;
 
 }
 
 Ar::Ar(const Ar & other)
 {
-  type_ = other.type_->clone();
+  dtype_ = other.dtype_->clone();
   ident_ = other.ident_;
 
 }
@@ -226,14 +226,14 @@ Ar &Ar::operator=(const Ar & other)
 
 void Ar::swap(Ar & other)
 {
-  std::swap(type_, other.type_);
+  std::swap(dtype_, other.dtype_);
   std::swap(ident_, other.ident_);
 
 }
 
 Ar::~Ar()
 {
-  delete(type_);
+  delete(dtype_);
 
 }
 
@@ -250,16 +250,16 @@ Ar *Ar::clone() const
 
 
 /********************   Field    ********************/
-Field::Field(Type *p1, Ident p2)
+Field::Field(DType *p1, Ident p2)
 {
-  type_ = p1;
+  dtype_ = p1;
   ident_ = p2;
 
 }
 
 Field::Field(const Field & other)
 {
-  type_ = other.type_->clone();
+  dtype_ = other.dtype_->clone();
   ident_ = other.ident_;
 
 }
@@ -273,14 +273,14 @@ Field &Field::operator=(const Field & other)
 
 void Field::swap(Field & other)
 {
-  std::swap(type_, other.type_);
+  std::swap(dtype_, other.dtype_);
   std::swap(ident_, other.ident_);
 
 }
 
 Field::~Field()
 {
-  delete(type_);
+  delete(dtype_);
 
 }
 
@@ -297,9 +297,9 @@ Field *Field::clone() const
 
 
 /********************   Method    ********************/
-Method::Method(Type *p1, Ident p2, ListArg *p3, Block *p4)
+Method::Method(DType *p1, Ident p2, ListArg *p3, Block *p4)
 {
-  type_ = p1;
+  dtype_ = p1;
   ident_ = p2;
   listarg_ = p3;
   block_ = p4;
@@ -308,7 +308,7 @@ Method::Method(Type *p1, Ident p2, ListArg *p3, Block *p4)
 
 Method::Method(const Method & other)
 {
-  type_ = other.type_->clone();
+  dtype_ = other.dtype_->clone();
   ident_ = other.ident_;
   listarg_ = other.listarg_->clone();
   block_ = other.block_->clone();
@@ -324,7 +324,7 @@ Method &Method::operator=(const Method & other)
 
 void Method::swap(Method & other)
 {
-  std::swap(type_, other.type_);
+  std::swap(dtype_, other.dtype_);
   std::swap(ident_, other.ident_);
   std::swap(listarg_, other.listarg_);
   std::swap(block_, other.block_);
@@ -333,7 +333,7 @@ void Method::swap(Method & other)
 
 Method::~Method()
 {
-  delete(type_);
+  delete(dtype_);
   delete(listarg_);
   delete(block_);
 
@@ -480,16 +480,16 @@ BStmt *BStmt::clone() const
 
 
 /********************   Decl    ********************/
-Decl::Decl(Type *p1, ListItem *p2)
+Decl::Decl(DType *p1, ListItem *p2)
 {
-  type_ = p1;
+  dtype_ = p1;
   listitem_ = p2;
 
 }
 
 Decl::Decl(const Decl & other)
 {
-  type_ = other.type_->clone();
+  dtype_ = other.dtype_->clone();
   listitem_ = other.listitem_->clone();
 
 }
@@ -503,14 +503,14 @@ Decl &Decl::operator=(const Decl & other)
 
 void Decl::swap(Decl & other)
 {
-  std::swap(type_, other.type_);
+  std::swap(dtype_, other.dtype_);
   std::swap(listitem_, other.listitem_);
 
 }
 
 Decl::~Decl()
 {
-  delete(type_);
+  delete(dtype_);
   delete(listitem_);
 
 }
@@ -1084,6 +1084,94 @@ Init *Init::clone() const
 
 
 
+/********************   DTypeBase    ********************/
+DTypeBase::DTypeBase(BaseType *p1)
+{
+  basetype_ = p1;
+
+}
+
+DTypeBase::DTypeBase(const DTypeBase & other)
+{
+  basetype_ = other.basetype_->clone();
+
+}
+
+DTypeBase &DTypeBase::operator=(const DTypeBase & other)
+{
+  DTypeBase tmp(other);
+  swap(tmp);
+  return *this;
+}
+
+void DTypeBase::swap(DTypeBase & other)
+{
+  std::swap(basetype_, other.basetype_);
+
+}
+
+DTypeBase::~DTypeBase()
+{
+  delete(basetype_);
+
+}
+
+void DTypeBase::accept(Visitor *v)
+{
+  v->visitDTypeBase(this);
+}
+
+DTypeBase *DTypeBase::clone() const
+{
+  return new DTypeBase(*this);
+}
+
+
+
+/********************   DTypeArr    ********************/
+DTypeArr::DTypeArr(BaseType *p1)
+{
+  basetype_ = p1;
+
+}
+
+DTypeArr::DTypeArr(const DTypeArr & other)
+{
+  basetype_ = other.basetype_->clone();
+
+}
+
+DTypeArr &DTypeArr::operator=(const DTypeArr & other)
+{
+  DTypeArr tmp(other);
+  swap(tmp);
+  return *this;
+}
+
+void DTypeArr::swap(DTypeArr & other)
+{
+  std::swap(basetype_, other.basetype_);
+
+}
+
+DTypeArr::~DTypeArr()
+{
+  delete(basetype_);
+
+}
+
+void DTypeArr::accept(Visitor *v)
+{
+  v->visitDTypeArr(this);
+}
+
+DTypeArr *DTypeArr::clone() const
+{
+  return new DTypeArr(*this);
+}
+
+
+
 /********************   TBase    ********************/
 TBase::TBase(BaseType *p1)
 {
@@ -1381,15 +1469,15 @@ Bool *Bool::clone() const
 
 
 /********************   ClassT    ********************/
-ClassT::ClassT(CIdent p1)
+ClassT::ClassT(Ident p1)
 {
-  cident_ = p1;
+  ident_ = p1;
 
 }
 
 ClassT::ClassT(const ClassT & other)
 {
-  cident_ = other.cident_;
+  ident_ = other.ident_;
 
 }
 
@@ -1402,7 +1490,7 @@ ClassT &ClassT::operator=(const ClassT & other)
 
 void ClassT::swap(ClassT & other)
 {
-  std::swap(cident_, other.cident_);
+  std::swap(ident_, other.ident_);
 
 }
 
@@ -1644,15 +1732,15 @@ ENewArr *ENewArr::clone() const
 
 
 /********************   ENewObj    ********************/
-ENewObj::ENewObj(CIdent p1)
+ENewObj::ENewObj(Ident p1)
 {
-  cident_ = p1;
+  ident_ = p1;
 
 }
 
 ENewObj::ENewObj(const ENewObj & other)
 {
-  cident_ = other.cident_;
+  ident_ = other.ident_;
 
 }
 
@@ -1665,7 +1753,7 @@ ENewObj &ENewObj::operator=(const ENewObj & other)
 
 void ENewObj::swap(ENewObj & other)
 {
-  std::swap(cident_, other.cident_);
+  std::swap(ident_, other.ident_);
 
 }
 

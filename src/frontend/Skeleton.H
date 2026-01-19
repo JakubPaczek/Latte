@@ -47,6 +47,7 @@ public:
   void visitWhile(While *p);
   void visitSExp(SExp *p);
   void visitForEach(ForEach *p);
+  void visitDVoid(DVoid *p);
   void visitDTypeBase(DTypeBase *p);
   void visitDTypeArr(DTypeArr *p);
   void visitTBase(TBase *p);

@@ -17,6 +17,7 @@ void Skeleton::visitMember(Member *t) {} //abstract class
 void Skeleton::visitBlock(Block *t) {} //abstract class
 void Skeleton::visitStmt(Stmt *t) {} //abstract class
 void Skeleton::visitItem(Item *t) {} //abstract class
+void Skeleton::visitDType(DType *t) {} //abstract class
 void Skeleton::visitType(Type *t) {} //abstract class
 void Skeleton::visitBaseType(BaseType *t) {} //abstract class
 void Skeleton::visitExpr(Expr *t) {} //abstract class
@@ -36,7 +37,7 @@ void Skeleton::visitFnDef(FnDef *fn_def)
 {
   /* Code For FnDef Goes Here */
 
-  if (fn_def->type_) fn_def->type_->accept(this);
+  if (fn_def->dtype_) fn_def->dtype_->accept(this);
   visitIdent(fn_def->ident_);
   if (fn_def->listarg_) fn_def->listarg_->accept(this);
   if (fn_def->block_) fn_def->block_->accept(this);
@@ -47,7 +48,7 @@ void Skeleton::visitClassDef(ClassDef *class_def)
 {
   /* Code For ClassDef Goes Here */
 
-  visitCIdent(class_def->cident_);
+  visitIdent(class_def->ident_);
   if (class_def->listmember_) class_def->listmember_->accept(this);
 
 }
@@ -56,8 +57,8 @@ void Skeleton::visitClassExt(ClassExt *class_ext)
 {
   /* Code For ClassExt Goes Here */
 
-  visitCIdent(class_ext->cident_1);
-  visitCIdent(class_ext->cident_2);
+  visitIdent(class_ext->ident_1);
+  visitIdent(class_ext->ident_2);
   if (class_ext->listmember_) class_ext->listmember_->accept(this);
 
 }
@@ -66,7 +67,7 @@ void Skeleton::visitAr(Ar *ar)
 {
   /* Code For Ar Goes Here */
 
-  if (ar->type_) ar->type_->accept(this);
+  if (ar->dtype_) ar->dtype_->accept(this);
   visitIdent(ar->ident_);
 
 }
@@ -75,7 +76,7 @@ void Skeleton::visitField(Field *field)
 {
   /* Code For Field Goes Here */
 
-  if (field->type_) field->type_->accept(this);
+  if (field->dtype_) field->dtype_->accept(this);
   visitIdent(field->ident_);
 
 }
@@ -84,7 +85,7 @@ void Skeleton::visitMethod(Method *method)
 {
   /* Code For Method Goes Here */
 
-  if (method->type_) method->type_->accept(this);
+  if (method->dtype_) method->dtype_->accept(this);
   visitIdent(method->ident_);
   if (method->listarg_) method->listarg_->accept(this);
   if (method->block_) method->block_->accept(this);
@@ -118,7 +119,7 @@ void Skeleton::visitDecl(Decl *decl)
 {
   /* Code For Decl Goes Here */
 
-  if (decl->type_) decl->type_->accept(this);
+  if (decl->dtype_) decl->dtype_->accept(this);
   if (decl->listitem_) decl->listitem_->accept(this);
 
 }
@@ -227,6 +228,22 @@ void Skeleton::visitInit(Init *init)
 
 }
 
+void Skeleton::visitDTypeBase(DTypeBase *d_type_base)
+{
+  /* Code For DTypeBase Goes Here */
+
+  if (d_type_base->basetype_) d_type_base->basetype_->accept(this);
+
+}
+
+void Skeleton::visitDTypeArr(DTypeArr *d_type_arr)
+{
+  /* Code For DTypeArr Goes Here */
+
+  if (d_type_arr->basetype_) d_type_arr->basetype_->accept(this);
+
+}
+
 void Skeleton::visitTBase(TBase *t_base)
 {
   /* Code For TBase Goes Here */
@@ -284,7 +301,7 @@ void Skeleton::visitClassT(ClassT *class_t)
 {
   /* Code For ClassT Goes Here */
 
-  visitCIdent(class_t->cident_);
+  visitIdent(class_t->ident_);
 
 }
 
@@ -332,7 +349,7 @@ void Skeleton::visitENewObj(ENewObj *e_new_obj)
 {
   /* Code For ENewObj Goes Here */
 
-  visitCIdent(e_new_obj->cident_);
+  visitIdent(e_new_obj->ident_);
 
 }
 
@@ -633,11 +650,6 @@ void Skeleton::visitString(String x)
 void Skeleton::visitIdent(Ident x)
 {
   /* Code for Ident Goes Here */
-}
-
-void Skeleton::visitCIdent(CIdent x)
-{
-  /* Code for CIdent Goes Here */
 }
 
 
