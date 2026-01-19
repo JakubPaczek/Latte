@@ -1,7 +1,8 @@
-# Top-level Makefile that:
-# 1) ALWAYS regenerates BNFC C++ frontend from .cf
-# 2) Then builds the generated frontend (Parser/Lexer/Absyn/Printer)
-# 3) Then builds your compiler + runtime
+# Top-level Makefile:
+# - ALWAYS regenerates BNFC frontend from .cf
+# - then runs flex+bison manually
+# - then compiles ONLY needed frontend objects (no TestLatteCPP)
+# - then builds your compiler + runtime
 
 # -----------------------------
 # Tools / flags
@@ -14,6 +15,13 @@ CFLAGS   := -Wall -Wextra -O2 -g
 BNFC     := bnfc
 BNFCFLAGS:= --cpp
 
+FLEX     := flex
+BISON    := bison
+
+# prefixes must match what BNFC-generated frontend expects
+FLEX_PREFIX  := Latte_cpp_
+BISON_PREFIX := latte_cpp_
+
 # -----------------------------
 # Layout
 # -----------------------------
@@ -23,10 +31,7 @@ BACKEND_DIR  := $(SRC_DIR)/backend
 SEM_DIR      := $(SRC_DIR)/semantic
 LIB_DIR      := lib
 
-# Path to your grammar (.cf)
-# CHANGE THIS if your file name/location is different:
 GRAMMAR := $(SRC_DIR)/LatteCPP.cf
-# e.g. GRAMMAR := $(FRONTEND_DIR)/LatteCPP.cf
 
 # -----------------------------
 # Targets
@@ -45,6 +50,7 @@ ifeq ($(OS),Windows_NT)
   RMDIR     := rmdir /S /Q
   COPY      := copy /Y
   MKDIR_P   := if not exist "$(LIB_DIR)" mkdir "$(LIB_DIR)"
+  MKDIR_FE  := if not exist "$(FRONTEND_DIR)" mkdir "$(FRONTEND_DIR)"
   NULLDEV   := NUL
   EXEEXT    := .exe
   TARGET_WIN        := $(TARGET)$(EXEEXT)
@@ -54,6 +60,7 @@ else
   RMDIR     := rm -rf
   COPY      := cp -f
   MKDIR_P   := mkdir -p $(LIB_DIR)
+  MKDIR_FE  := mkdir -p $(FRONTEND_DIR)
   NULLDEV   := /dev/null
   EXEEXT    :=
   TARGET_WIN        := $(TARGET)
@@ -61,29 +68,74 @@ else
 endif
 
 # -----------------------------
+# BNFC prefix/link fix (compile-time mapping)
+# Your nm showed: latte_cpp__scan_string
+# so map yy_scan_string/yy_delete_buffer -> latte_cpp__*
+# -----------------------------
+FRONTEND_FIX_DEFS := \
+  -Dyylval=latte_cpp_lval \
+  -Dyytext=latte_cpp_text \
+  -Dyy_scan_string=latte_cpp__scan_string \
+  -Dyy_delete_buffer=latte_cpp__delete_buffer
+
+FRONTEND_CXXFLAGS := $(CXXFLAGS) $(FRONTEND_FIX_DEFS) -I$(FRONTEND_DIR)
+
+# -----------------------------
 # Phony
 # -----------------------------
 .PHONY: all clean distclean bnfc frontend runtime
 
-all: frontend $(TARGET_WIN) $(TARGET_X86_64_WIN) runtime
+all: bnfc frontend $(TARGET_WIN) $(TARGET_X86_64_WIN) runtime
 
 # -----------------------------
 # 1) ALWAYS regenerate BNFC frontend from .cf
 # -----------------------------
 bnfc:
 	@echo "==> BNFC: regenerating C++ frontend from $(GRAMMAR) into $(FRONTEND_DIR)"
+	@$(MKDIR_FE)
 	$(BNFC) $(BNFCFLAGS) -o $(FRONTEND_DIR) $(GRAMMAR)
 
 # -----------------------------
-# 2) Build generated frontend
-#    (We run bnfc EVERY TIME you call make, as requested.)
+# 2) Generate Lexer.C and Parser.C (do NOT use BNFC-generated Makefile)
 # -----------------------------
-frontend: bnfc
-	@echo "==> Building frontend in $(FRONTEND_DIR)"
-	$(MAKE) -C $(FRONTEND_DIR)
+$(FRONTEND_DIR)/Lexer.C: bnfc $(FRONTEND_DIR)/LatteCPP.l
+	@echo "==> FLEX: generating Lexer.C"
+	$(FLEX) -P$(FLEX_PREFIX) -o$@ $(FRONTEND_DIR)/LatteCPP.l
+
+$(FRONTEND_DIR)/Parser.C: bnfc $(FRONTEND_DIR)/LatteCPP.y
+	@echo "==> BISON: generating Parser.C"
+	$(BISON) -t -p$(BISON_PREFIX) $(FRONTEND_DIR)/LatteCPP.y -o $@
 
 # -----------------------------
-# 3) runtime.o
+# 3) Compile frontend objects (NO Test.C, NO linking TestLatteCPP)
+# -----------------------------
+FRONTEND_OBJS := \
+  $(FRONTEND_DIR)/Absyn.o \
+  $(FRONTEND_DIR)/Buffer.o \
+  $(FRONTEND_DIR)/Printer.o \
+  $(FRONTEND_DIR)/Parser.o \
+  $(FRONTEND_DIR)/Lexer.o
+
+$(FRONTEND_DIR)/Absyn.o: bnfc $(FRONTEND_DIR)/Absyn.C $(FRONTEND_DIR)/Absyn.H
+	$(CXX) $(FRONTEND_CXXFLAGS) -c $(FRONTEND_DIR)/Absyn.C -o $@
+
+$(FRONTEND_DIR)/Buffer.o: bnfc $(FRONTEND_DIR)/Buffer.C $(FRONTEND_DIR)/Buffer.H
+	$(CXX) $(FRONTEND_CXXFLAGS) -c $(FRONTEND_DIR)/Buffer.C -o $@
+
+$(FRONTEND_DIR)/Printer.o: bnfc $(FRONTEND_DIR)/Printer.C $(FRONTEND_DIR)/Printer.H
+	$(CXX) $(FRONTEND_CXXFLAGS) -c $(FRONTEND_DIR)/Printer.C -o $@
+
+$(FRONTEND_DIR)/Parser.o: $(FRONTEND_DIR)/Parser.C $(FRONTEND_DIR)/Parser.H
+	$(CXX) $(FRONTEND_CXXFLAGS) -c $(FRONTEND_DIR)/Parser.C -o $@
+
+$(FRONTEND_DIR)/Lexer.o: $(FRONTEND_DIR)/Lexer.C
+	$(CXX) $(FRONTEND_CXXFLAGS) -c $(FRONTEND_DIR)/Lexer.C -o $@
+
+frontend: $(FRONTEND_OBJS)
+	@echo "==> Frontend objects built (skipped TestLatteCPP)"
+
+# -----------------------------
+# 4) runtime.o
 # -----------------------------
 runtime: $(RUNTIME_OBJ)
 
@@ -93,8 +145,6 @@ $(RUNTIME_OBJ): $(RUNTIME_SRC)
 
 # -----------------------------
 # Compiler objects
-# Adjust these lists to your actual filenames.
-# (I’m keeping your structure; change semantic/*.o paths if needed.)
 # -----------------------------
 CORE_OBJS := \
   $(SRC_DIR)/latc.o
@@ -108,15 +158,6 @@ BACKEND_OBJS := \
   $(BACKEND_DIR)/codegen.o \
   $(BACKEND_DIR)/regalloc.o \
   $(BACKEND_DIR)/x86_emit.o
-
-# Frontend objects are produced by $(MAKE) -C src/frontend, but the
-# link step needs them. Their names depend on BNFC output; these are typical:
-FRONTEND_OBJS := \
-  $(FRONTEND_DIR)/Absyn.o \
-  $(FRONTEND_DIR)/Buffer.o \
-  $(FRONTEND_DIR)/Parser.o \
-  $(FRONTEND_DIR)/Printer.o \
-  $(FRONTEND_DIR)/Lexer.o
 
 # -----------------------------
 # Compile C++ sources
@@ -165,12 +206,11 @@ ifeq ($(OS),Windows_NT)
 	-$(RM) $(SRC_DIR)\*.o 2>$(NULLDEV) || exit 0
 	-$(RM) $(SEM_DIR)\*.o 2>$(NULLDEV) || exit 0
 	-$(RM) $(BACKEND_DIR)\*.o 2>$(NULLDEV) || exit 0
+	-$(RM) $(FRONTEND_DIR)\*.o 2>$(NULLDEV) || exit 0
 	-$(RM) $(RUNTIME_OBJ) 2>$(NULLDEV) || exit 0
-	$(MAKE) -C $(FRONTEND_DIR) clean || exit 0
 else
 	$(RM) $(TARGET_WIN) $(TARGET_X86_64_WIN) \
-	      $(SRC_DIR)/*.o $(SEM_DIR)/*.o $(BACKEND_DIR)/*.o $(RUNTIME_OBJ)
-	$(MAKE) -C $(FRONTEND_DIR) clean || true
+	      $(SRC_DIR)/*.o $(SEM_DIR)/*.o $(BACKEND_DIR)/*.o $(FRONTEND_DIR)/*.o $(RUNTIME_OBJ)
 endif
 
 # distclean also removes BNFC-generated frontend sources,
