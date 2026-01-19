@@ -456,26 +456,38 @@ bool TypeChecker::checkStmt(Stmt* stmt, const LatteType& expectedReturn)
 
     if (auto* s = dynamic_cast<Ass*>(stmt))
     {
-        LatteType lType = checkLValueExpr(s->expr_1);
-        LatteType rType = checkExpr(s->expr_2);
-        if (!isAssignable(lType, rType))
-            fail("Type mismatch in assignment", 0);
+        Expr* lhs = s->expr_1;              // lub jak u Ciebie się nazywa
+        Expr* lhs0 = stripWrappers(lhs);
+    
+        if (!(dynamic_cast<EVar*>(lhs0) ||
+              dynamic_cast<EField*>(lhs0) ||
+              dynamic_cast<EIndex*>(lhs0))) {
+            fail("Left side of assignment must be a variable, field, or array element", 0);
+        }
         return false;
     }
 
     if (auto* s = dynamic_cast<Incr*>(stmt))
     {
-        LatteType lType = checkLValueExpr(s->expr_);
-        if (lType != LatteType::Int())
-            fail("Increment '++' requires int l-value", 0);
+        Expr* lhs0 = stripWrappers(s->expr_);
+        if (!(dynamic_cast<EVar*>(lhs0) ||
+              dynamic_cast<EField*>(lhs0) ||
+              dynamic_cast<EIndex*>(lhs0))) {
+            fail("Increment/decrement target must be a variable, field, or array element", 0);
+        }
+        
         return false;
     }
 
     if (auto* s = dynamic_cast<Decr*>(stmt))
     {
-        LatteType lType = checkLValueExpr(s->expr_);
-        if (lType != LatteType::Int())
-            fail("Decrement '--' requires int l-value", 0);
+        Expr* lhs0 = stripWrappers(s->expr_);
+        if (!(dynamic_cast<EVar*>(lhs0) ||
+              dynamic_cast<EField*>(lhs0) ||
+              dynamic_cast<EIndex*>(lhs0))) {
+            fail("Increment/decrement target must be a variable, field, or array element", 0);
+        }
+        
         return false;
     }
 
@@ -585,12 +597,23 @@ bool TypeChecker::isReferenceType(const LatteType& t) const
     return true; // <- jeśli masz takie metody
 }
 
-
 // ---------------- expressions ----------------
+
+static Expr* stripWrappers(Expr* e) {
+    while (true) {
+        if (auto* a = dynamic_cast<EAtom*>(e))  { e = a->expr_; continue; }
+        if (auto* p = dynamic_cast<EParen*>(e)) { e = p->expr_; continue; }
+        return e;
+    }
+}
 
 LatteType TypeChecker::checkExpr(Expr* expr)
 {
     if (!expr) return LatteType::Unknown();
+
+    if (auto* e = dynamic_cast<EAtom*>(expr)) {
+        return checkExpr(e->expr_);
+    }
 
     // (Expr)
     if (auto* p = dynamic_cast<EParen*>(expr))
