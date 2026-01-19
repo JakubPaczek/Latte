@@ -703,14 +703,16 @@ LatteType TypeChecker::checkExpr(Expr* expr)
     // więc łapiemy je normalnie:
     if (auto* e = dynamic_cast<Neg*>(expr))
     {
-        LatteType t = checkExpr((Expr*)e->expr_);
+        LatteType t = checkExpr(e->expr_);
+
         if (t != LatteType::Int())
             fail("Unary '-' expects int operand", 0);
         return LatteType::Int();
     }
     if (auto* e = dynamic_cast<Not*>(expr))
     {
-        LatteType t = checkExpr((Expr*)e->expr_);
+        LatteType t = checkExpr(e->expr_);
+
         if (t != LatteType::Bool())
             fail("Logical '!' expects boolean operand", 0);
         return LatteType::Bool();
