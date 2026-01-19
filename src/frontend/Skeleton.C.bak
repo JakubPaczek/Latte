@@ -128,8 +128,8 @@ void Skeleton::visitAss(Ass *ass)
 {
   /* Code For Ass Goes Here */
 
-  if (ass->lval_) ass->lval_->accept(this);
-  if (ass->expr_) ass->expr_->accept(this);
+  if (ass->expr_1) ass->expr_1->accept(this);
+  if (ass->expr_2) ass->expr_2->accept(this);
 
 }
 
@@ -137,7 +137,7 @@ void Skeleton::visitIncr(Incr *incr)
 {
   /* Code For Incr Goes Here */
 
-  if (incr->lval_) incr->lval_->accept(this);
+  if (incr->expr_) incr->expr_->accept(this);
 
 }
 
@@ -145,7 +145,7 @@ void Skeleton::visitDecr(Decr *decr)
 {
   /* Code For Decr Goes Here */
 
-  if (decr->lval_) decr->lval_->accept(this);
+  if (decr->expr_) decr->expr_->accept(this);
 
 }
 
@@ -329,14 +329,6 @@ void Skeleton::visitESelf(ESelf *e_self)
 
 }
 
-void Skeleton::visitEParen(EParen *e_paren)
-{
-  /* Code For EParen Goes Here */
-
-  if (e_paren->expr_) e_paren->expr_->accept(this);
-
-}
-
 void Skeleton::visitENull(ENull *e_null)
 {
   /* Code For ENull Goes Here */
@@ -414,14 +406,6 @@ void Skeleton::visitEApp(EApp *e_app)
 
   visitIdent(e_app->ident_);
   if (e_app->listexpr_) e_app->listexpr_->accept(this);
-
-}
-
-void Skeleton::visitEPrim(EPrim *e_prim)
-{
-  /* Code For EPrim Goes Here */
-
-  if (e_prim->expr_) e_prim->expr_->accept(this);
 
 }
 

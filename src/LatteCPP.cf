@@ -50,14 +50,6 @@ Incr.       Stmt ::= Expr6 "++" ";" ;
 
 Decr.       Stmt ::= Expr6 "--" ";" ;
 
-LVar.       LVal ::= Ident ;
-
-LField.     LVal ::= LVal "." Ident ;
-
-LIndex.     LVal ::= LVal "[" Expr "]" ;
-
-LSelf.  LVal  ::= "self" ;
-
 Ret.        Stmt ::= "return" Expr ";" ;
 
 VRet.       Stmt ::= "return" ";" ;
