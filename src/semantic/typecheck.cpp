@@ -13,7 +13,6 @@ TypeChecker::TypeChecker()
 
 static Expr* stripWrappers(Expr* e) {
     while (true) {
-        if (auto* a = dynamic_cast<EAtom*>(e))  { e = a->expr_; continue; }
         if (auto* p = dynamic_cast<EParen*>(e)) { e = p->expr_; continue; }
         return e;
     }
@@ -602,17 +601,9 @@ LatteType TypeChecker::checkExpr(Expr* expr)
 {
     if (!expr) return LatteType::Unknown();
 
-    if (auto* e = dynamic_cast<EAtom*>(expr)) {
-        return checkExpr(e->expr_);
-    }
-
     // (Expr)
     if (auto* p = dynamic_cast<EParen*>(expr))
         return checkExpr(p->expr_);
-
-    // null
-    if (dynamic_cast<ENull*>(expr))
-        fail("Use (T)null for typed null", lineOf(expr));
     
     // int / bool / string literals
     if (dynamic_cast<ELitInt*>(expr))
