@@ -25,6 +25,7 @@ struct LatteType {
     std::string name; // for Class
     std::shared_ptr<LatteType> elem; // for Array
 
+    LatteType() = default;
     explicit LatteType(LatteTypeKind k) : kind(k) {}
 
     bool operator==(const LatteType& other) const noexcept
@@ -53,7 +54,6 @@ struct LatteType {
     static LatteType Class(std::string n)
     {
         LatteType t(LatteTypeKind::Class);
-        t.kind = LatteTypeKind::Class;
         t.name = std::move(n);
         return t;
     }
@@ -61,7 +61,6 @@ struct LatteType {
     static LatteType Array(LatteType element)
     {
         LatteType t(LatteTypeKind::Array);
-        t.kind = LatteTypeKind::Array;
         t.elem = std::make_shared<LatteType>(std::move(element));
         return t;
     }
