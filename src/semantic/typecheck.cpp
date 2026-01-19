@@ -940,10 +940,11 @@ LatteType TypeChecker::typeFromAst(Type* ty)
 
     if (auto* t = dynamic_cast<TArr*>(ty))
     {
-        LatteType bt = baseTypeFromAst(t->basetype_);
-        if (bt.kind == LatteTypeKind::Void)
+        LatteType inner = typeFromAst(t->type_);   // <-- zamiast basetype_
+        if (inner.kind == LatteTypeKind::Void)
             fail("void[] is not allowed", 0);
-        return LatteType::Array(bt);
+
+        return LatteType::Array(inner);
     }
 
     if (dynamic_cast<Fun*>(ty))
