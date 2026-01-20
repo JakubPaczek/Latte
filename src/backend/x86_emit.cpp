@@ -40,7 +40,7 @@ const char *X86Emitter::r64(PhysReg pr)
     case PhysReg::R10:
         return "%r10";
     case PhysReg::R11:
-        return "%r11d";
+        return "%r11";
     case PhysReg::R12:
         return "%r12";
     case PhysReg::R13:
@@ -76,6 +76,8 @@ const char *X86Emitter::r32(PhysReg pr)
         return "%r9d";
     case PhysReg::R10:
         return "%r10d";
+    case PhysReg::R11:
+        return "%r11d";
     case PhysReg::R12:
         return "%r12d";
     case PhysReg::R13:
