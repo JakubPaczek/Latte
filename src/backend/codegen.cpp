@@ -204,6 +204,30 @@ namespace
         int nextLabelId = 0;
         Label newLabel() { return Label(nextLabelId++); }
 
+        bool hasField(const std::string &cls, const std::string &field) const
+        {
+            const auto &ci = getClass(cls);
+            for (const auto &f : ci.fields)
+                if (f.name == field)
+                    return true;
+            return false;
+        }
+
+        std::string resolveMethodClass(std::string cls, const std::string &method) const
+        {
+            while (true)
+            {
+                std::string mangled = mangleMethod(cls, method);
+                if (sigs.find(mangled) != sigs.end())
+                    return cls;
+                const auto &ci = getClass(cls);
+                if (!ci.base)
+                    break;
+                cls = *ci.base;
+            }
+            throw std::runtime_error("Unknown method: " + mangleMethod(cls, method));
+        }
+
         int internString(const std::string &raw)
         {
             auto it = strId.find(raw);
@@ -395,8 +419,26 @@ namespace
 
             if (auto *v = dynamic_cast<EVar *>(e))
             {
-                auto vi = lookupVar(v->ident_);
-                return {vi.v, vi.t};
+                // 1) najpierw locals/args
+                for (int i = (int)scopes.size() - 1; i >= 0; --i)
+                {
+                    auto it = scopes[i].find(v->ident_);
+                    if (it != scopes[i].end())
+                        return {it->second.v, it->second.t};
+                }
+
+                // 2) fallback: pole obiektu w metodzie
+                if (currentClass && g.hasField(*currentClass, v->ident_))
+                {
+                    auto self = lookupVar("self"); // to już masz zawsze w metodach
+                    int off = g.fieldOffset(*currentClass, v->ident_);
+                    Ty ft = g.fieldType(*currentClass, v->ident_);
+                    VReg dst = newTmp(ft);
+                    emit(Instr::load(dst, MemRef(self.v, off)));
+                    return {dst, ft};
+                }
+
+                throw std::runtime_error("Undefined variable in codegen: " + v->ident_);
             }
 
             if (dynamic_cast<ESelf *>(e))
@@ -674,7 +716,8 @@ namespace
                 if (obj.t.k != Ty::K::CLASS)
                     throw std::runtime_error("Method call on non-object");
 
-                std::string mangled = mangleMethod(obj.t.name, me->ident_);
+                std::string defCls = g.resolveMethodClass(obj.t.name, me->ident_);
+                std::string mangled = mangleMethod(defCls, me->ident_);
 
                 auto it = g.sigs.find(mangled);
                 if (it == g.sigs.end())
@@ -713,7 +756,26 @@ namespace
                 return genLValue(at->expr_);
 
             if (auto *v = dynamic_cast<EVar *>(e6))
-                return LValue::fromVar(lookupVar(v->ident_));
+            {
+                // locals/args
+                for (int i = (int)scopes.size() - 1; i >= 0; --i)
+                {
+                    auto it = scopes[i].find(v->ident_);
+                    if (it != scopes[i].end())
+                        return LValue::fromVar(it->second);
+                }
+
+                // pole obiektu w metodzie
+                if (currentClass && g.hasField(*currentClass, v->ident_))
+                {
+                    auto self = lookupVar("self");
+                    int off = g.fieldOffset(*currentClass, v->ident_);
+                    Ty ft = g.fieldType(*currentClass, v->ident_);
+                    return LValue::fromMem(MemRef(self.v, off), ft);
+                }
+
+                throw std::runtime_error("Undefined variable in codegen: " + v->ident_);
+            }
 
             if (auto *ix = dynamic_cast<EIndex *>(e6))
             {
