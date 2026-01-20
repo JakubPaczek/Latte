@@ -31,23 +31,34 @@ void RegAllocator::computeUseDef(const FunctionIR &f, std::vector<BlockSets> &ou
     for (size_t bi = 0; bi < f.blocks.size(); ++bi)
     {
         auto &bs = out[bi];
+
+        auto useReg = [&](const std::optional<VReg> &vr)
+        {
+            if (!vr)
+                return;
+            int v = vr->id;
+            if (!bs.def.count(v))
+                bs.use.insert(v);
+        };
+        auto defReg = [&](const std::optional<VReg> &vr)
+        {
+            if (!vr)
+                return;
+            bs.def.insert(vr->id);
+        };
+        auto useMem = [&](const std::optional<MemRef> &om)
+        {
+            if (!om)
+                return;
+            const MemRef &m = *om;
+            if (m.base.id >= 0 && !bs.def.count(m.base.id))
+                bs.use.insert(m.base.id);
+            if (m.index && m.index->id >= 0 && !bs.def.count(m.index->id))
+                bs.use.insert(m.index->id);
+        };
+
         for (const auto &ins : f.blocks[bi].ins)
         {
-            auto useReg = [&](const std::optional<VReg> &vr)
-            {
-                if (!vr)
-                    return;
-                int v = vr->id;
-                if (!bs.def.count(v))
-                    bs.use.insert(v);
-            };
-            auto defReg = [&](const std::optional<VReg> &vr)
-            {
-                if (!vr)
-                    return;
-                bs.def.insert(vr->id);
-            };
-
             switch (ins.k)
             {
             case Instr::Kind::Mov:
@@ -73,10 +84,8 @@ void RegAllocator::computeUseDef(const FunctionIR &f, std::vector<BlockSets> &ou
                 break;
             case Instr::Kind::Call:
                 for (auto vr : ins.args)
-                {
                     if (!bs.def.count(vr.id))
                         bs.use.insert(vr.id);
-                }
                 defReg(ins.dst);
                 break;
             case Instr::Kind::Ret:
@@ -88,51 +97,20 @@ void RegAllocator::computeUseDef(const FunctionIR &f, std::vector<BlockSets> &ou
             case Instr::Kind::JmpIfNonZero:
                 useReg(ins.a);
                 break;
+
             case Instr::Kind::Lea:
-                // uses: mem.base, mem.index ; def: dst
-                if (ins.mem)
-                {
-                    if (!bs.def.count(ins.mem->base.id))
-                        bs.use.insert(ins.mem->base.id);
-                    if (ins.mem->index)
-                    {
-                        int v = ins.mem->index->id;
-                        if (!bs.def.count(v))
-                            bs.use.insert(v);
-                    }
-                }
+                useMem(ins.mem);
                 defReg(ins.dst);
                 break;
 
             case Instr::Kind::Load:
-                if (ins.mem)
-                {
-                    if (!bs.def.count(ins.mem->base.id))
-                        bs.use.insert(ins.mem->base.id);
-                    if (ins.mem->index)
-                    {
-                        int v = ins.mem->index->id;
-                        if (!bs.def.count(v))
-                            bs.use.insert(v);
-                    }
-                }
+                useMem(ins.mem);
                 defReg(ins.dst);
                 break;
 
             case Instr::Kind::Store:
-                // uses: a, mem.base, mem.index
-                useReg(ins.a);
-                if (ins.mem)
-                {
-                    if (!bs.def.count(ins.mem->base.id))
-                        bs.use.insert(ins.mem->base.id);
-                    if (ins.mem->index)
-                    {
-                        int v = ins.mem->index->id;
-                        if (!bs.def.count(v))
-                            bs.use.insert(v);
-                    }
-                }
+                useMem(ins.mem);
+                useReg(ins.a); // src
                 break;
             }
         }
@@ -155,13 +133,11 @@ void RegAllocator::computeLiveInOut(const FunctionIR &f,
         for (int bi = (int)n - 1; bi >= 0; --bi)
         {
             std::unordered_set<int> outSet;
-            for (int s : f.blocks[bi].succ)
-            {
+            for (int s : f.blocks[(size_t)bi].succ)
                 outSet = setUnion(outSet, liveIn[(size_t)s]);
-            }
 
-            std::unordered_set<int> inSet = setUnion(sets[(size_t)bi].use,
-                                                     setDiff(outSet, sets[(size_t)bi].def));
+            std::unordered_set<int> inSet =
+                setUnion(sets[(size_t)bi].use, setDiff(outSet, sets[(size_t)bi].def));
 
             if (outSet != liveOut[(size_t)bi])
             {
@@ -195,10 +171,20 @@ std::unordered_set<int> RegAllocator::computeSpansCallRegs(
             auto liveAfter = live;
 
             std::unordered_set<int> defs, uses;
+
             auto addUse = [&](const std::optional<VReg> &vr)
             { if (vr) uses.insert(vr->id); };
             auto addDef = [&](const std::optional<VReg> &vr)
             { if (vr) defs.insert(vr->id); };
+            auto addUseMem = [&](const std::optional<MemRef> &om)
+            {
+                if (!om)
+                    return;
+                const MemRef &m = *om;
+                uses.insert(m.base.id);
+                if (m.index)
+                    uses.insert(m.index->id);
+            };
 
             switch (ins.k)
             {
@@ -237,32 +223,20 @@ std::unordered_set<int> RegAllocator::computeSpansCallRegs(
             case Instr::Kind::JmpIfNonZero:
                 addUse(ins.a);
                 break;
+
             case Instr::Kind::Lea:
-                if (ins.mem)
-                {
-                    uses.insert(ins.mem->base.id);
-                    if (ins.mem->index)
-                        uses.insert(ins.mem->index->id);
-                }
+                addUseMem(ins.mem);
                 addDef(ins.dst);
                 break;
+
             case Instr::Kind::Load:
-                if (ins.mem)
-                {
-                    uses.insert(ins.mem->base.id);
-                    if (ins.mem->index)
-                        uses.insert(ins.mem->index->id);
-                }
+                addUseMem(ins.mem);
                 addDef(ins.dst);
                 break;
+
             case Instr::Kind::Store:
+                addUseMem(ins.mem);
                 addUse(ins.a);
-                if (ins.mem)
-                {
-                    uses.insert(ins.mem->base.id);
-                    if (ins.mem->index)
-                        uses.insert(ins.mem->index->id);
-                }
                 break;
             }
 
@@ -270,12 +244,10 @@ std::unordered_set<int> RegAllocator::computeSpansCallRegs(
 
             if (ins.k == Instr::Kind::Call)
             {
-                // If v is live across call, it must not be in caller-saved regs. // call clobber
+                // v live across call => must not be in caller-saved regs
                 for (int v : liveBefore)
-                {
                     if (liveAfter.count(v))
                         spans.insert(v);
-                }
             }
 
             live = std::move(liveBefore);
@@ -297,19 +269,27 @@ std::vector<RegAllocator::Interval> RegAllocator::buildIntervals(
     int pos = 0;
     std::vector<int> blockEndPos(f.blocks.size(), 0);
 
+    auto touch = [&](const std::optional<VReg> &vr)
+    {
+        if (!vr)
+            return;
+        int v = vr->id;
+        start[v] = std::min(start[v], pos);
+        end[v] = std::max(end[v], pos);
+    };
+    auto touchMem = [&](const std::optional<MemRef> &om)
+    {
+        if (!om)
+            return;
+        touch(std::optional<VReg>(om->base));
+        if (om->index)
+            touch(std::optional<VReg>(*om->index));
+    };
+
     for (size_t bi = 0; bi < f.blocks.size(); ++bi)
     {
         for (const auto &ins : f.blocks[bi].ins)
         {
-            auto touch = [&](const std::optional<VReg> &vr)
-            {
-                if (!vr)
-                    return;
-                int v = vr->id;
-                start[v] = std::min(start[v], pos);
-                end[v] = std::max(end[v], pos);
-            };
-
             switch (ins.k)
             {
             case Instr::Kind::Mov:
@@ -347,25 +327,20 @@ std::vector<RegAllocator::Interval> RegAllocator::buildIntervals(
             case Instr::Kind::JmpIfNonZero:
                 touch(ins.a);
                 break;
+
             case Instr::Kind::Lea:
+                touchMem(ins.mem);
+                touch(ins.dst);
+                break;
+
             case Instr::Kind::Load:
-                if (ins.mem)
-                {
-                    touch(std::optional<VReg>(ins.mem->base));
-                    if (ins.mem->index)
-                        touch(ins.mem->index);
-                }
+                touchMem(ins.mem);
                 touch(ins.dst);
                 break;
 
             case Instr::Kind::Store:
                 touch(ins.a);
-                if (ins.mem)
-                {
-                    touch(std::optional<VReg>(ins.mem->base));
-                    if (ins.mem->index)
-                        touch(ins.mem->index);
-                }
+                touchMem(ins.mem);
                 break;
             }
 
@@ -375,13 +350,9 @@ std::vector<RegAllocator::Interval> RegAllocator::buildIntervals(
     }
 
     for (size_t bi = 0; bi < f.blocks.size(); ++bi)
-    {
         for (int v : liveOut[bi])
-        {
             if (end[v] >= 0)
                 end[v] = std::max(end[v], blockEndPos[bi]);
-        }
-    }
 
     // params live from entry
     for (const auto &p : f.params)
@@ -390,7 +361,7 @@ std::vector<RegAllocator::Interval> RegAllocator::buildIntervals(
         if (v < 0 || v >= V)
             continue;
         if (end[v] >= 0)
-            start[v] = 0; // only if parameter is actually used
+            start[v] = 0; // only if actually used
     }
 
     std::vector<Interval> intervals;
@@ -423,14 +394,12 @@ bool RegAllocator::isCalleeSaved(PhysReg r)
 
 bool RegAllocator::isAllocable(PhysReg r)
 {
-    // reserve EAX for return/scratch and EDX because idiv/cltd clobbers it
+    // reserve EAX for return/scratch and EDX because idiv/cdq clobbers it
     return r != PhysReg::EAX && r != PhysReg::EDX && r != PhysReg::NONE;
 }
 
 std::vector<PhysReg> RegAllocator::allRegs()
 {
-    // EAX reserved by emitter
-    // avoid EDX: clobbered by cdq/idiv
     return {
         PhysReg::ECX, PhysReg::ESI, PhysReg::EDI,
         PhysReg::R8, PhysReg::R9, PhysReg::R10,
@@ -512,7 +481,8 @@ PhysReg RegAllocator::idxReg(int i)
     }
 }
 
-void RegAllocator::expireOld(std::vector<Interval *> &active, int curStart, std::array<bool, kPhysRegCount> &free)
+void RegAllocator::expireOld(std::vector<Interval *> &active, int curStart,
+                             std::array<bool, kPhysRegCount> &free)
 {
     while (!active.empty())
     {
@@ -546,7 +516,7 @@ AllocResult RegAllocator::allocate(const FunctionIR &f)
     std::array<bool, kPhysRegCount> free{};
     free.fill(true);
 
-    // Reserve RAX. // implicit scratch/return
+    // Reserve RAX.
     free[(size_t)regIndex(PhysReg::EAX)] = false;
 
     std::vector<Interval *> active;
@@ -591,7 +561,6 @@ AllocResult RegAllocator::allocate(const FunctionIR &f)
             free[(size_t)idx] = false;
 
             insertActiveSorted(&cur);
-
             if (isCalleeSaved(chosen))
                 res.usedCalleeSaved.insert(chosen);
             continue;
@@ -602,11 +571,10 @@ AllocResult RegAllocator::allocate(const FunctionIR &f)
             if (!isAllocable(pr))
                 return false;
             if (it.spansCall)
-                return isCalleeSaved(pr); // must survive call
+                return isCalleeSaved(pr);
             return true;
         };
 
-        // Find a spill candidate with a compatible reg. // prefer long-lived spill
         Interval *spill = nullptr;
         for (auto it = active.rbegin(); it != active.rend(); ++it)
         {
@@ -619,7 +587,6 @@ AllocResult RegAllocator::allocate(const FunctionIR &f)
 
         if (spill && spill->end > cur.end && spill->isReg)
         {
-            // Evict 'spill', reuse its reg. // classic linear-scan
             cur.isReg = true;
             cur.pr = spill->pr;
 
@@ -631,13 +598,11 @@ AllocResult RegAllocator::allocate(const FunctionIR &f)
                 active.erase(posIt);
 
             insertActiveSorted(&cur);
-
             if (isCalleeSaved(cur.pr))
                 res.usedCalleeSaved.insert(cur.pr);
         }
         else
         {
-            // Spill current interval. // no reg available
             cur.isReg = false;
             cur.spillSlot = nextSpillSlot++;
         }
@@ -646,14 +611,11 @@ AllocResult RegAllocator::allocate(const FunctionIR &f)
     for (const auto &in : intervals)
     {
         if (in.isReg)
-        {
             res.loc[(size_t)in.v] = Location{true, in.pr, -1};
-        }
         else
-        {
             res.loc[(size_t)in.v] = Location{false, PhysReg::NONE, in.spillSlot};
-        }
     }
+
     res.spillSlots = nextSpillSlot;
     return res;
 }
