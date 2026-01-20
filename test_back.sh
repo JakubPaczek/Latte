@@ -1,139 +1,227 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-trap 'rc=$?; echo "ERROR at line $LINENO: $BASH_COMMAND (exit $rc)" >&2; exit $rc' ERR
+# ----------------------------
+# Config (override via env)
+# ----------------------------
+ROOT="${ROOT:-lattests}"
+COMPILER="${COMPILER:-./latc_x86_64}"
+RUNTIME_C="${RUNTIME_C:-./lib/runtime.c}"
+TMPDIR="${TMPDIR:-/tmp}"
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-GOOD_DIR="${ROOT_DIR}/lattests/good"
-COMPILER="${ROOT_DIR}/latc_x86_64"
-RUNTIME_C="${ROOT_DIR}/lib/runtime.c"
-RUNTIME_O="${ROOT_DIR}/lib/runtime.o"
+# link flags (some distros need -no-pie)
+LINKFLAGS=(${LINKFLAGS:-"-no-pie"})
 
-green() { printf "\033[32m%s\033[0m\n" "$*"; }
-red()   { printf "\033[31m%s\033[0m\n" "$*"; }
-yellow(){ printf "\033[33m%s\033[0m\n" "$*"; }
+# ----------------------------
+# Helpers
+# ----------------------------
+green()  { printf "\033[32m%s\033[0m\n" "$*"; }
+red()    { printf "\033[31m%s\033[0m\n" "$*"; }
+yellow() { printf "\033[33m%s\033[0m\n" "$*"; }
 
-if [[ ! -x "${COMPILER}" ]]; then
-  echo "ERROR: missing compiler: ${COMPILER}" >&2
-  echo "Run: make" >&2
-  exit 2
-fi
+first_lines() { sed -n "1,${2:-30}p" "$1" 2>/dev/null || true; }
 
-if [[ ! -d "${GOOD_DIR}" ]]; then
-  echo "ERROR: missing tests dir: ${GOOD_DIR}" >&2
-  exit 2
-fi
+PASS=0
+FAIL=0
+SKIP=0
+FAIL_LIST=()
 
-# build runtime once
-gcc -c "${RUNTIME_C}" -o "${RUNTIME_O}"
+pass() { PASS=$((PASS+1)); }
+fail() { FAIL=$((FAIL+1)); FAIL_LIST+=("$1"); }
 
-shopt -s nullglob
-tests=( "${GOOD_DIR}"/*.lat )
-shopt -u nullglob
+need() {
+  if [[ ! -e "$1" ]]; then
+    echo "ERROR: missing: $1" >&2
+    exit 2
+  fi
+}
 
-echo "Running tests from: ${GOOD_DIR}"
-echo "Found ${#tests[@]} .lat files"
-echo
+# compile runtime once into a temp .o
+build_runtime() {
+  RUNTIME_O="$(mktemp "$TMPDIR/latte_runtime.XXXXXX.o")"
+  gcc -c "$RUNTIME_C" -o "$RUNTIME_O"
+}
 
-if (( ${#tests[@]} == 0 )); then
-  echo "ERROR: no .lat files found" >&2
-  exit 2
-fi
+# Runs backend pipeline for ONE .lat
+# mode = good | bad
+run_one() {
+  local lat="$1"
+  local mode="$2"
 
-total=0
-ok=0
-fail=0
-noout=0
+  local base="${lat%.lat}"
+  local name
+  name="$(basename "$base")"
 
-for lat in "${tests[@]}"; do
-  ((total+=1))
+  local sfile="${base}.s"
+  local expected="${base}.output"
+  local input="${base}.input"
 
-  base="${lat%.lat}"
-  name="$(basename "${base}")"
-  sfile="${base}.s"
-  exe="${base}"
-  expected="${base}.output"
-  input="${base}.input"
-  got="${base}.got"
-  diff_file="${base}.diff"
+  local exe out got diff c_log l_log r_err
+  exe="$(mktemp "$TMPDIR/latte_exe.${name}.XXXXXX")"
+  got="$(mktemp "$TMPDIR/latte_got.${name}.XXXXXX")"
+  c_log="$(mktemp "$TMPDIR/latte_compile.${name}.XXXXXX.log")"
+  l_log="$(mktemp "$TMPDIR/latte_link.${name}.XXXXXX.log")"
+  r_err="$(mktemp "$TMPDIR/latte_run.${name}.XXXXXX.err")"
+  diff="$(mktemp "$TMPDIR/latte_diff.${name}.XXXXXX")"
 
-  compile_log="${base}.compile.log"
-  link_log="${base}.link.log"
-  run_err="${base}.run.err"
+  echo "==> $name"
 
-  echo "==> ${name}"
-
-  rm -f "${sfile}" "${exe}" "${got}" "${diff_file}" "${compile_log}" "${link_log}" "${run_err}"
+  rm -f "$sfile"
 
   # 1) lat -> s
-  if ! "${COMPILER}" "${lat}" > /dev/null 2> "${compile_log}"; then
-    red "COMPILE_FAIL ${name}"
-    echo "  log: ${compile_log}"
-    ((fail+=1))
-    echo
-    continue
-  fi
-
-  # 2) link s + runtime
-  if ! gcc -no-pie "${sfile}" "${RUNTIME_O}" -o "${exe}" > "${link_log}" 2>&1; then
-    red "LINK_FAIL ${name}"
-    echo "  log: ${link_log}"
-    ((fail+=1))
-    echo
-    continue
-  fi
-
-  # 3) run (feed stdin from .input if present)
-  if [[ -f "${input}" ]]; then
-    if ! "${exe}" < "${input}" > "${got}" 2> "${run_err}"; then
-      red "RUN_FAIL ${name}"
-      echo "  stderr: ${run_err}"
-      ((fail+=1))
+  if "$COMPILER" "$lat" >/dev/null 2>"$c_log"; then
+    if [[ "$mode" == "bad" ]]; then
+      red "FAIL (expected compile error) $name"
+      echo "  compiler stderr (first 30 lines):"
+      first_lines "$c_log" 30
+      fail "$lat (expected COMPILE_FAIL)"
+      cleanup_tmp "$exe" "$got" "$c_log" "$l_log" "$r_err" "$diff"
       echo
-      continue
+      return
     fi
   else
-    if ! "${exe}" > "${got}" 2> "${run_err}"; then
-      red "RUN_FAIL ${name}"
-      echo "  stderr: ${run_err}"
-      ((fail+=1))
+    if [[ "$mode" == "bad" ]]; then
+      green "OK (compile failed as expected) $name"
+      pass
+      cleanup_tmp "$exe" "$got" "$c_log" "$l_log" "$r_err" "$diff"
       echo
-      continue
+      return
+    fi
+    red "COMPILE_FAIL $name"
+    echo "  compiler stderr (first 30 lines):"
+    first_lines "$c_log" 30
+    fail "$lat (compile failed)"
+    cleanup_tmp "$exe" "$got" "$c_log" "$l_log" "$r_err" "$diff"
+    echo
+    return
+  fi
+
+  # sanity: compiler should have produced .s
+  if [[ ! -f "$sfile" ]]; then
+    red "COMPILE_FAIL (no .s produced) $name"
+    echo "  compiler stderr (first 30 lines):"
+    first_lines "$c_log" 30
+    fail "$lat (no .s produced)"
+    cleanup_tmp "$exe" "$got" "$c_log" "$l_log" "$r_err" "$diff"
+    echo
+    return
+  fi
+
+  # 2) link
+  if ! gcc "${LINKFLAGS[@]}" "$sfile" "$RUNTIME_O" -o "$exe" >"$l_log" 2>&1; then
+    red "LINK_FAIL $name"
+    echo "  linker log (first 30 lines):"
+    first_lines "$l_log" 30
+    fail "$lat (link failed)"
+    cleanup_tmp "$exe" "$got" "$c_log" "$l_log" "$r_err" "$diff"
+    echo
+    return
+  fi
+
+  # 3) run
+  if [[ -f "$input" ]]; then
+    if ! "$exe" <"$input" >"$got" 2>"$r_err"; then
+      red "RUN_FAIL $name"
+      echo "  stderr (first 30 lines):"
+      first_lines "$r_err" 30
+      fail "$lat (run failed)"
+      cleanup_tmp "$exe" "$got" "$c_log" "$l_log" "$r_err" "$diff"
+      echo
+      return
+    fi
+  else
+    if ! "$exe" >"$got" 2>"$r_err"; then
+      red "RUN_FAIL $name"
+      echo "  stderr (first 30 lines):"
+      first_lines "$r_err" 30
+      fail "$lat (run failed)"
+      cleanup_tmp "$exe" "$got" "$c_log" "$l_log" "$r_err" "$diff"
+      echo
+      return
     fi
   fi
+
+  # normalize CRLF in program output
+  tr -d '\r' <"$got" >"${got}.tmp" && mv "${got}.tmp" "$got"
 
   # 4) compare if expected exists
-  if [[ -f "${expected}" ]]; then
-    # normalize CRLF just in case
-    tr -d '\r' < "${got}" > "${got}.tmp" && mv "${got}.tmp" "${got}"
-
-    if diff -u "${expected}" "${got}" > "${diff_file}"; then
-      green "OK ${name}"
-      ((ok+=1))
-      rm -f "${compile_log}" "${link_log}" "${run_err}" "${diff_file}"
+  if [[ -f "$expected" ]]; then
+    if diff -u "$expected" "$got" >"$diff"; then
+      green "OK $name"
+      pass
     else
-      red "FAIL ${name}"
-      echo "----- expected -----"
-      cat "${expected}"
-      echo "----- got -----"
-      cat "${got}"
-      echo "----- diff -----"
-      cat "${diff_file}"
-      ((fail+=1))
+      red "FAIL $name"
+      echo "----- diff (first 80 lines) -----"
+      first_lines "$diff" 80
+      fail "$lat (output differs)"
     fi
   else
-    yellow "NOOUTPUT ${name} (saved: ${name}.got)"
-    ((noout+=1))
-    rm -f "${compile_log}" "${link_log}" "${run_err}"
+    yellow "NOOUTPUT $name (no .output file)"
+    SKIP=$((SKIP+1))
   fi
 
+  cleanup_tmp "$exe" "$got" "$c_log" "$l_log" "$r_err" "$diff"
   echo
+}
+
+cleanup_tmp() {
+  rm -f "$@"
+}
+
+# ----------------------------
+# Main
+# ----------------------------
+need "$COMPILER"
+need "$ROOT"
+need "$RUNTIME_C"
+
+if [[ ! -x "$COMPILER" ]]; then
+  echo "ERROR: compiler not executable: $COMPILER" >&2
+  exit 2
+fi
+
+build_runtime
+
+echo "Using compiler: $COMPILER"
+echo "Tests root:     $ROOT"
+echo
+
+shopt -s nullglob
+
+# good
+for f in "$ROOT/good"/*.lat "$ROOT/good"/**/*.lat; do
+  [[ -f "$f" ]] || continue
+  run_one "$f" good
 done
 
-echo "Summary:"
-echo "  total:     ${total}"
-echo "  ok:        ${ok}"
-echo "  fail:      ${fail}"
-echo "  no output: ${noout}"
+# bad (expect compile fail)
+for f in "$ROOT/bad"/*.lat "$ROOT/bad"/**/*.lat; do
+  [[ -f "$f" ]] || continue
+  run_one "$f" bad
+done
 
-exit $(( fail > 0 ))
+# extensions (heuristic like in your frontend script)
+if [[ -d "$ROOT/extensions" ]]; then
+  while IFS= read -r -d '' f; do
+    case "$f" in
+      */bad/*) run_one "$f" bad ;;
+      *)       run_one "$f" good ;;
+    esac
+  done < <(find "$ROOT/extensions" -type f -name "*.lat" -print0 | sort -z)
+fi
+
+rm -f "$RUNTIME_O"
+
+echo "========================"
+echo "PASS: $PASS"
+echo "FAIL: $FAIL"
+echo "NOOUTPUT: $SKIP"
+if (( FAIL != 0 )); then
+  echo
+  echo "Failed tests:"
+  for x in "${FAIL_LIST[@]}"; do
+    echo " - $x"
+  done
+  exit 1
+fi
+echo "ALL BACKEND TESTS OK"
