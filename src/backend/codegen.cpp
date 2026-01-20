@@ -644,15 +644,26 @@ namespace
             // ----- NOWE: field -----
             if (auto *fe = dynamic_cast<EField *>(e))
             {
-                Val obj = genExpr(fe->expr_);
-                if (obj.t.k != Ty::K::CLASS)
+                Val base = genExpr(fe->expr_);
+
+                // array.length
+                if (base.t.k == Ty::K::ARR && fe->ident_ == "length")
+                {
+                    VReg dst = f.newVReg(VType::I32);
+                    // header: length at offset 0
+                    emit(Instr::load(dst, MemRef(base.v, 0)));
+                    return {dst, Ty::I32()};
+                }
+
+                // normal object field
+                if (base.t.k != Ty::K::CLASS)
                     throw std::runtime_error("Field access on non-object");
 
-                int off = g.fieldOffset(obj.t.name, fe->ident_);
-                Ty ft = g.fieldType(obj.t.name, fe->ident_);
+                int off = g.fieldOffset(base.t.name, fe->ident_);
+                Ty ft = g.fieldType(base.t.name, fe->ident_);
 
                 VReg dst = newTmp(ft);
-                emit(Instr::load(dst, MemRef(obj.v, off)));
+                emit(Instr::load(dst, MemRef(base.v, off)));
                 return {dst, ft};
             }
 
@@ -806,32 +817,78 @@ namespace
 
             if (auto *as = dynamic_cast<Ass *>(s))
             {
-                std::string name = asLValueIdent(as->expr_1);
-                VarInfo vi = lookupVar(name);
+                LValue lv = genLValue(as->expr_1);
                 Val rhs = genExpr(as->expr_2);
-                emit(Instr::mov(vi.v, rhs.v));
+
+                if (lv.k == LValue::K::Var)
+                {
+                    emit(Instr::mov(lv.var.v, rhs.v));
+                }
+                else
+                {
+                    // store rhs -> [mem]
+                    emit(Instr::store(lv.mem, rhs.v));
+                }
                 return;
             }
 
             if (auto *in = dynamic_cast<Incr *>(s))
             {
-                std::string name = asLValueIdent(in->expr_);
-                VarInfo vi = lookupVar(name);
+                LValue lv = genLValue(in->expr_);
+
+                // load current value
+                VReg cur = f.newVReg(VType::I32);
+                if (lv.k == LValue::K::Var)
+                {
+                    emit(Instr::mov(cur, lv.var.v));
+                }
+                else
+                {
+                    emit(Instr::load(cur, lv.mem));
+                }
+
                 VReg one = makeI32Const(1);
-                VReg tmp = f.newVReg();
-                emit(Instr::bin(tmp, vi.v, BinOp::Add, one));
-                emit(Instr::mov(vi.v, tmp));
+                VReg tmp = f.newVReg(VType::I32);
+                emit(Instr::bin(tmp, cur, BinOp::Add, one));
+
+                // store back
+                if (lv.k == LValue::K::Var)
+                {
+                    emit(Instr::mov(lv.var.v, tmp));
+                }
+                else
+                {
+                    emit(Instr::store(lv.mem, tmp));
+                }
                 return;
             }
 
             if (auto *de = dynamic_cast<Decr *>(s))
             {
-                std::string name = asLValueIdent(de->expr_);
-                VarInfo vi = lookupVar(name);
+                LValue lv = genLValue(de->expr_);
+
+                VReg cur = f.newVReg(VType::I32);
+                if (lv.k == LValue::K::Var)
+                {
+                    emit(Instr::mov(cur, lv.var.v));
+                }
+                else
+                {
+                    emit(Instr::load(cur, lv.mem));
+                }
+
                 VReg one = makeI32Const(1);
-                VReg tmp = f.newVReg();
-                emit(Instr::bin(tmp, vi.v, BinOp::Sub, one));
-                emit(Instr::mov(vi.v, tmp));
+                VReg tmp = f.newVReg(VType::I32);
+                emit(Instr::bin(tmp, cur, BinOp::Sub, one));
+
+                if (lv.k == LValue::K::Var)
+                {
+                    emit(Instr::mov(lv.var.v, tmp));
+                }
+                else
+                {
+                    emit(Instr::store(lv.mem, tmp));
+                }
                 return;
             }
 
@@ -955,9 +1012,7 @@ namespace
                     VReg elem = newTmp(elemT);
                     emit(Instr::load(elem, MemRef(arr.v, ireg, sc, disp)));
 
-                    VReg xreg = newTmp(itTy);
-                    emit(Instr::mov(xreg, elem));
-                    defineVar(fe->ident_, {xreg, itTy});
+                    defineVar(fe->ident_, {elem, elemT});
 
                     genStmt(fe->stmt_);
                 }
