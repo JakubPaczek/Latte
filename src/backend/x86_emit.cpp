@@ -169,14 +169,10 @@ static std::string memRefStr(const FunctionIR &f,
                              const MemRef &m,
                              int savedCount)
 {
-    // base/index mogą być w rejestrze albo spill. Jeśli spill — musimy je załadować do scratch,
-    // ale emitter nie ma tu scratch managementu. Dlatego ZAŁÓŻ w codegenie/regalloc:
-    // base oraz index są zawsze w vregach i regalloc zapewni im lokację.
-    // Jeśli base/index mogą być spilled, trzeba tu użyć loadVRegToReg (patrz niżej w implementacji Instr::Kind::Lea/Load/Store).
     (void)f;
     (void)a;
     (void)savedCount;
-    return ""; // nieużywane jeśli zrobisz wariant z loadVRegToReg w samych case'ach
+    return "";
 }
 
 void X86Emitter::emitFunction(std::ostream &out, const FunctionIR &f, const AllocResult &a)
@@ -259,7 +255,7 @@ void X86Emitter::emitFunction(std::ostream &out, const FunctionIR &f, const Allo
         }
     };
 
-    // params: register + stack (>=7th)
+    // params: register + stack
     const int pcount = (int)f.params.size();
     const int regCount = std::min(pcount, 6);
 
@@ -695,7 +691,6 @@ void X86Emitter::emitFunction(std::ostream &out, const FunctionIR &f, const Allo
                 if (ins.mem->index)
                     ti = loadVRegToReg(out, f, a, ins.mem->index->id, ex, savedCount);
 
-                // wrzuć wartość do %r11/%r11d (żeby store nie był mem->mem)
                 if (tv.pr != PhysReg::R11)
                     out << "  " << (isPtr ? "movq " : "movl ")
                         << (isPtr ? r64(tv.pr) : r32(tv.pr)) << ", "

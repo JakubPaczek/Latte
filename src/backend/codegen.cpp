@@ -11,7 +11,7 @@
 #include <functional>
 
 // --------------------
-// Typy na potrzeby codegen (nie semantyka, bo TypeChecker już to robi)
+// Types for codegen
 // --------------------
 namespace
 {
@@ -27,8 +27,8 @@ namespace
             VOID,
             PTR /* null cast etc */
         } k;
-        std::string name;         // dla CLASS
-        std::shared_ptr<Ty> elem; // dla ARR
+        std::string name;         // CLASS
+        std::shared_ptr<Ty> elem; // ARR
 
         static Ty I32() { return Ty{K::I32}; }
         static Ty Str() { return Ty{K::STR}; }
@@ -64,16 +64,16 @@ namespace
     }
 
     // --------------------
-    // Funkcyjne sygnatury (dla funkcji i metod po manglingu)
+    // Signatures
     // --------------------
     struct FuncSig
     {
         Ty ret;
-        std::vector<Ty> args; // dla metod: args[0] to self (PTR/class)
+        std::vector<Ty> args; // for methods
     };
 
     // --------------------
-    // Layouty klas (offsety pól). Metody nie overriding.
+    // Class layout
     // --------------------
     struct FieldInfo
     {
@@ -86,7 +86,7 @@ namespace
     {
         std::string name;
         std::optional<std::string> base;
-        std::vector<FieldInfo> fields; // po wyliczeniu offsetów: zawiera też pola bazowe na początku
+        std::vector<FieldInfo> fields; // after offset
         int size = 0;
     };
 
@@ -176,7 +176,6 @@ namespace
             return tyFromBaseType(b->basetype_);
         if (auto *a = dynamic_cast<TArr *>(t))
             return Ty::Arr(tyFromBaseType(a->basetype_));
-        // Fun w praktyce pojawia się w ENullCast "(Type)null" -> potraktujemy jako PTR
         if (dynamic_cast<Fun *>(t))
             return Ty::Ptr();
         throw std::runtime_error("Unknown Type node");
@@ -286,7 +285,6 @@ namespace
         Ty t;
     };
 
-    // LValue: albo zmienna (var), albo adres pamięci (mem)
     struct LValue
     {
         enum class K
@@ -326,7 +324,6 @@ namespace
         int curBlock = -1;
         bool curTerminated = false;
 
-        // dla metod: typ klasy self
         std::optional<std::string> currentClass;
 
         explicit FnCG(CGCtx &gg) : g(gg) {}
@@ -372,7 +369,6 @@ namespace
                 return;
             f.blocks[curBlock].ins.push_back(i);
 
-            // u Ciebie: terminatory: Ret i Jmp
             if (i.k == Instr::Kind::Ret || i.k == Instr::Kind::Jmp)
                 curTerminated = true;
         }
@@ -393,7 +389,7 @@ namespace
         }
 
         // --------------------
-        // genExpr: r-wartość
+        // genExpr: r-value
         // --------------------
         Val genExpr(Expr *e)
         {
@@ -419,7 +415,6 @@ namespace
 
             if (auto *v = dynamic_cast<EVar *>(e))
             {
-                // 1) najpierw locals/args
                 for (int i = (int)scopes.size() - 1; i >= 0; --i)
                 {
                     auto it = scopes[i].find(v->ident_);
@@ -427,10 +422,9 @@ namespace
                         return {it->second.v, it->second.t};
                 }
 
-                // 2) fallback: pole obiektu w metodzie
                 if (currentClass && g.hasField(*currentClass, v->ident_))
                 {
-                    auto self = lookupVar("self"); // to już masz zawsze w metodach
+                    auto self = lookupVar("self");
                     int off = g.fieldOffset(*currentClass, v->ident_);
                     Ty ft = g.fieldType(*currentClass, v->ident_);
                     VReg dst = newTmp(ft);
@@ -443,7 +437,6 @@ namespace
 
             if (dynamic_cast<ESelf *>(e))
             {
-                // self jest zmienną w scope (w metodzie)
                 auto vi = lookupVar("self");
                 return {vi.v, vi.t};
             }
@@ -483,7 +476,7 @@ namespace
                 if (it->second.ret.k == Ty::K::VOID)
                 {
                     emit(Instr::call(std::nullopt, name, std::move(args)));
-                    // void-expr tylko jako SExp: zwróć dummy
+
                     return {makeI32Const(0), Ty::I32()};
                 }
 
@@ -557,7 +550,6 @@ namespace
                 Val a = genExpr(rel->expr_1);
                 Val b = genExpr(rel->expr_2);
 
-                // string ==/!= -> strcmp
                 if ((dynamic_cast<EQU *>(rel->relop_) || dynamic_cast<NE *>(rel->relop_)) &&
                     (a.t.k == Ty::K::STR || b.t.k == Ty::K::STR))
                 {
@@ -641,7 +633,6 @@ namespace
                 return {res, Ty::I32()};
             }
 
-            // ----- NOWE: new array -----
             if (auto *na = dynamic_cast<ENewArr *>(e))
             {
                 Ty elemT = tyFromBaseType(na->basetype_);
@@ -654,7 +645,6 @@ namespace
                 return {dst, Ty::Arr(elemT)};
             }
 
-            // ----- NOWE: new object -----
             if (auto *no = dynamic_cast<ENewObj *>(e))
             {
                 const std::string cls = no->ident_;
@@ -665,7 +655,6 @@ namespace
                 return {dst, Ty::Class(cls)};
             }
 
-            // ----- NOWE: index -----
             if (auto *ix = dynamic_cast<EIndex *>(e))
             {
                 Val arr = genExpr(ix->expr_1);
@@ -683,7 +672,6 @@ namespace
                 return {dst, elemT};
             }
 
-            // ----- NOWE: field -----
             if (auto *fe = dynamic_cast<EField *>(e))
             {
                 Val base = genExpr(fe->expr_);
@@ -709,7 +697,6 @@ namespace
                 return {dst, ft};
             }
 
-            // ----- NOWE: method call -----
             if (auto *me = dynamic_cast<EMethod *>(e))
             {
                 Val obj = genExpr(me->expr_);
@@ -747,11 +734,10 @@ namespace
         }
 
         // --------------------
-        // genLValue: Expr6 jako miejsce zapisu
+        // genLValue
         // --------------------
         LValue genLValue(Expr *e6)
         {
-            // Expr6 może być EAtom->Expr7, EIndex, EField
             if (auto *at = dynamic_cast<EAtom *>(e6))
                 return genLValue(at->expr_);
 
@@ -765,7 +751,6 @@ namespace
                         return LValue::fromVar(it->second);
                 }
 
-                // pole obiektu w metodzie
                 if (currentClass && g.hasField(*currentClass, v->ident_))
                 {
                     auto self = lookupVar("self");
@@ -862,7 +847,7 @@ namespace
                         if (!isPtrLike(t))
                             emit(Instr::loadImm(v, 0));
                         else
-                            emit(Instr::loadImm(v, 0)); // nullptr dla klas/tablic; dla string możesz zrobić "" jeśli chcesz
+                            emit(Instr::loadImm(v, 0));
                     }
                     else if (auto *ini = dynamic_cast<Init *>(it))
                     {
@@ -1191,17 +1176,12 @@ namespace
         g.sigs["__latte_concat"] = {Ty::Str(), {Ty::Str(), Ty::Str()}};
         g.sigs["strcmp"] = {Ty::I32(), {Ty::Str(), Ty::Str()}};
 
-        // runtime pod obiekty/tablice:
         g.sigs["__latte_new_obj"] = {Ty::Ptr(), {Ty::I32()}};              // size
         g.sigs["__latte_new_array"] = {Ty::Ptr(), {Ty::I32(), Ty::I32()}}; // len, elemSize
     }
 
-    // --------------------
-    // Klasy: zbierz definicje i policz layout (offsety + size)
-    // --------------------
     static void collectClasses(CGCtx &g, Prog *p)
     {
-        // 1) zarejestruj nazwy + base
         for (TopDef *td : *p->listtopdef_)
         {
             if (auto *cd = dynamic_cast<ClassDef *>(td))
@@ -1220,7 +1200,6 @@ namespace
             }
         }
 
-        // 2) wypełnij pola (bez offsetów)
         for (TopDef *td : *p->listtopdef_)
         {
             if (auto *cd = dynamic_cast<ClassDef *>(td))
@@ -1259,7 +1238,6 @@ namespace
             }
         }
 
-        // 3) policz offsety + size z dziedziczeniem (base jako prefix)
         std::unordered_map<std::string, bool> done;
 
         std::function<void(const std::string &)> dfs = [&](const std::string &c)
@@ -1283,21 +1261,19 @@ namespace
             {
                 f.offset = off;
                 off += isPtrLike(f.type) ? 8 : 4;
-                // proste wyrównanie do 8 dla pointerów:
                 if (isPtrLike(f.type) && (off % 8 != 0))
                     off += (8 - (off % 8));
                 merged.push_back(f);
             }
 
             ci.fields = std::move(merged);
-            ci.size = std::max(off, 8); // minimalny rozmiar (żeby new_obj(0) nie było)
+            ci.size = std::max(off, 8);
             done[c] = true;
         };
 
         for (auto &[name, _] : g.classes)
             dfs(name);
 
-        // zapis do ModuleIR.classes (dla backendu)
         g.mod.classes.clear();
         g.mod.classes.reserve(g.classes.size());
         for (auto &[name, ci] : g.classes)
@@ -1318,12 +1294,8 @@ namespace
         }
     }
 
-    // --------------------
-    // Sygnatury: funkcje + metody (mangling + self)
-    // --------------------
     static void collectSigs(CGCtx &g, Prog *p)
     {
-        // funkcje top-level
         for (TopDef *td : *p->listtopdef_)
         {
             if (auto *fn = dynamic_cast<FnDef *>(td))
@@ -1341,7 +1313,6 @@ namespace
             }
         }
 
-        // metody jako funkcje: C__m(self, args...)
         for (TopDef *td : *p->listtopdef_)
         {
             if (auto *cd = dynamic_cast<ClassDef *>(td))
@@ -1414,18 +1385,15 @@ ModuleIR buildModuleIR(Program *program)
     CGCtx g;
     addBuiltins(g);
 
-    // string pool: "" na start
+    // string pool: ""
     g.internString("");
 
-    // 1) klasy -> layout
     if (p->listtopdef_)
         collectClasses(g, p);
 
-    // 2) sygnatury (funkcje + metody po manglingu)
     if (p->listtopdef_)
         collectSigs(g, p);
 
-    // 3) emit funkcje top-level
     if (p->listtopdef_)
     {
         for (TopDef *td : *p->listtopdef_)
@@ -1454,7 +1422,6 @@ ModuleIR buildModuleIR(Program *program)
             cg.startNewBlock(g.newLabel());
             cg.genBlock(fn->block_);
 
-            // jeśli void i brak return
             if (!cg.curTerminated && g.sigs.at(cg.f.name).ret.k == Ty::K::VOID)
                 cg.emit(Instr::ret(std::nullopt));
 
@@ -1465,7 +1432,6 @@ ModuleIR buildModuleIR(Program *program)
         }
     }
 
-    // 4) emit metody jako osobne funkcje
     if (p->listtopdef_)
     {
         for (TopDef *td : *p->listtopdef_)
@@ -1508,7 +1474,6 @@ ModuleIR buildModuleIR(Program *program)
                 cg.f.params.push_back(selfV);
                 cg.defineVar("self", {selfV, selfTy});
 
-                // reszta parametrów
                 if (md->listarg_)
                 {
                     for (Arg *a : *md->listarg_)

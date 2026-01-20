@@ -7,9 +7,9 @@
 // ------------------------------------
 // Value types
 // ------------------------------------
-// I32: int/bool (bool jako 0/1)
-// PTR: wskaźniki (string, obiekty, tablice, nullptr)
-// Void: tylko metadata (retType)
+// I32: int/bool
+// PTR: pointers (string, object, array, nullptr)
+// Void: (retType)
 enum class VType
 {
     Void,
@@ -43,7 +43,7 @@ enum class BinOp
     Xor,
     Shl,
     Shr,
-    Sar // przyda sie pod redukcje mocy
+    Sar // for optimalization...
 };
 
 enum class UnOp
@@ -63,10 +63,10 @@ enum class CmpOp
 
 // ------------------------------------
 // Memory reference: [base + index*scale + disp]
-// base: zawsze wymagany
-// index: opcjonalny
+// base
+// index
 // scale: 1/2/4/8 (x86)
-// disp: przesuniecie w bajtach
+// disp
 // ------------------------------------
 struct MemRef
 {
@@ -96,19 +96,18 @@ struct Instr
         Cmp, // dst = (a cmp b) ? 1 : 0   (dst jest I32)
 
         // call/cfg
-        Call, // dst opcjonalny
-        Ret,  // a opcjonalny
+        Call,
+        Ret,
         Jmp,
         JmpIfZero,
         JmpIfNonZero,
 
         // memory/address
         Lea,  // dst = &mem   (dst typ PTR)
-        Load, // dst = *mem   (rozmiar wg vtype dst)
-        Store // *mem = a     (rozmiar wg vtype a)
+        Load, // dst = *mem
+        Store // *mem = a
     } k;
 
-    // znaczenie zalezne od Kind
     std::optional<VReg> dst{};
     std::optional<VReg> a{};
     std::optional<VReg> b{};
@@ -229,7 +228,7 @@ struct BasicBlock
 {
     Label label;
     std::vector<Instr> ins;
-    std::vector<int> succ; // indeksy blokow
+    std::vector<int> succ;
 };
 
 struct FunctionIR
@@ -279,7 +278,7 @@ struct MethodSig
     std::string name;    // source-level
     std::string mangled; // symbol emitted, np. "C__m"
     VType retType = VType::Void;
-    std::vector<VType> argTypes; // jesli chcesz: arg0=self (PTR)
+    std::vector<VType> argTypes;
 };
 
 struct ClassLayout
@@ -299,7 +298,5 @@ struct ModuleIR
     // structs/objects
     std::vector<ClassLayout> classes;
 
-    // arrays: przyjmijmy konwencje (zeby codegen i runtime sie zgadzaly)
-    // arrayHeaderBytes = 8, a.length czyta *(i64*)a, dane od (a + 8)
     int arrayHeaderBytes = 8;
 };

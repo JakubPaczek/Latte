@@ -244,7 +244,6 @@ std::unordered_set<int> RegAllocator::computeSpansCallRegs(
 
             if (ins.k == Instr::Kind::Call)
             {
-                // v live across call => must not be in caller-saved regs
                 for (int v : liveBefore)
                     if (liveAfter.count(v))
                         spans.insert(v);
@@ -394,7 +393,6 @@ bool RegAllocator::isCalleeSaved(PhysReg r)
 
 bool RegAllocator::isAllocable(PhysReg r)
 {
-    // reserve EAX for return/scratch and EDX because idiv/cdq clobbers it
     return r != PhysReg::EAX && r != PhysReg::EDX && r != PhysReg::NONE;
 }
 
@@ -516,7 +514,7 @@ AllocResult RegAllocator::allocate(const FunctionIR &f)
     std::array<bool, kPhysRegCount> free{};
     free.fill(true);
 
-    // Reserve RAX.
+    // reserve RAX
     free[(size_t)regIndex(PhysReg::EAX)] = false;
 
     std::vector<Interval *> active;

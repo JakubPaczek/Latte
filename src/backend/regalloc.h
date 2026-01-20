@@ -24,7 +24,7 @@ enum class PhysReg
     NONE
 };
 
-static constexpr int kPhysRegCount = 13; // bez NONE
+static constexpr int kPhysRegCount = 13;
 
 struct Location
 {
@@ -38,10 +38,8 @@ struct AllocResult
     // vreg.id -> location
     std::vector<Location> loc;
 
-    // how many spill slots (each 8 bytes on x86_64) // 64-bit spills
     int spillSlots = 0;
 
-    // which callee-saved regs are used (SysV x86_64: only EBX among current set)
     std::unordered_set<PhysReg> usedCalleeSaved;
 };
 

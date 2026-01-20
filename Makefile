@@ -137,22 +137,10 @@ $(TARGET_X86_64): frontend runtime $(CORE_X86_64_OBJS) $(SEM_OBJS) $(BACKEND_OBJ
 # Cleanup
 # -----------------------------
 clean:
-ifeq ($(OS),Windows_NT)
-	-del /Q $(TARGET) $(TARGET_X86_64) 2>NUL || exit 0
-	-del /Q $(SRC_DIR)\*.o 2>NUL || exit 0
-	-del /Q $(SEM_DIR)\*.o 2>NUL || exit 0
-	-del /Q $(BACKEND_DIR)\*.o 2>NUL || exit 0
-	-del /Q $(RUNTIME_OBJ) 2>NUL || exit 0
-	$(MAKE) -C $(FRONTEND_DIR) clean || exit 0
-else
 	rm -f $(TARGET) $(TARGET_X86_64) \
 	      $(SRC_DIR)/*.o $(SEM_DIR)/*.o $(BACKEND_DIR)/*.o $(RUNTIME_OBJ)
 	$(MAKE) -C $(FRONTEND_DIR) clean || true
-endif
+	@find lattests -type f ! -name '*.lat' ! -name '*.output' -delete
 
 distclean: clean
-ifeq ($(OS),Windows_NT)
-	-rmdir /S /Q $(FRONTEND_DIR) 2>NUL || exit 0
-else
 	rm -rf $(FRONTEND_DIR)
-endif
