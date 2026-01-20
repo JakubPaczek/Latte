@@ -379,6 +379,9 @@ namespace
             if (auto *p = dynamic_cast<EParen *>(e))
                 return genExpr(p->expr_);
 
+            if (auto *a = dynamic_cast<EAtom *>(e))
+                return genExpr(a->expr_);
+
             if (auto *n = dynamic_cast<ELitInt *>(e))
             {
                 VReg r = f.newVReg(VType::I32);
@@ -732,6 +735,29 @@ namespace
         // --------------------
         // Statements
         // --------------------
+        std::string asLValueIdent(Expr *e)
+        {
+            // unwrap
+            while (true)
+            {
+                if (auto *p = dynamic_cast<EParen *>(e))
+                {
+                    e = p->expr_;
+                    continue;
+                }
+                if (auto *a = dynamic_cast<EAtom *>(e))
+                {
+                    e = a->expr_;
+                    continue;
+                }
+                break;
+            }
+
+            if (auto *v = dynamic_cast<EVar *>(e))
+                return v->ident_;
+            throw std::runtime_error("Unsupported lvalue (expected variable) in assignment/incr/decr");
+        }
+
         void genStmt(Stmt *s)
         {
             if (!s || curTerminated)
@@ -778,61 +804,34 @@ namespace
                 return;
             }
 
-            // Ass: Expr6 = Expr
             if (auto *as = dynamic_cast<Ass *>(s))
             {
-                LValue lv = genLValue(as->expr_1);
+                std::string name = asLValueIdent(as->expr_1);
+                VarInfo vi = lookupVar(name);
                 Val rhs = genExpr(as->expr_2);
-
-                if (lv.k == LValue::K::Var)
-                    emit(Instr::mov(lv.var.v, rhs.v));
-                else
-                    emit(Instr::store(lv.mem, rhs.v));
+                emit(Instr::mov(vi.v, rhs.v));
                 return;
             }
 
-            // Incr/Decr: Expr6++ / Expr6--
             if (auto *in = dynamic_cast<Incr *>(s))
             {
-                LValue lv = genLValue(in->expr_);
+                std::string name = asLValueIdent(in->expr_);
+                VarInfo vi = lookupVar(name);
                 VReg one = makeI32Const(1);
-
-                if (lv.k == LValue::K::Var)
-                {
-                    VReg tmp = f.newVReg(VType::I32);
-                    emit(Instr::bin(tmp, lv.var.v, BinOp::Add, one));
-                    emit(Instr::mov(lv.var.v, tmp));
-                }
-                else
-                {
-                    VReg cur = f.newVReg(vtypeFromTy(lv.t));
-                    emit(Instr::load(cur, lv.mem));
-                    VReg tmp = f.newVReg(VType::I32);
-                    emit(Instr::bin(tmp, cur, BinOp::Add, one));
-                    emit(Instr::store(lv.mem, tmp));
-                }
+                VReg tmp = f.newVReg();
+                emit(Instr::bin(tmp, vi.v, BinOp::Add, one));
+                emit(Instr::mov(vi.v, tmp));
                 return;
             }
 
             if (auto *de = dynamic_cast<Decr *>(s))
             {
-                LValue lv = genLValue(de->expr_);
+                std::string name = asLValueIdent(de->expr_);
+                VarInfo vi = lookupVar(name);
                 VReg one = makeI32Const(1);
-
-                if (lv.k == LValue::K::Var)
-                {
-                    VReg tmp = f.newVReg(VType::I32);
-                    emit(Instr::bin(tmp, lv.var.v, BinOp::Sub, one));
-                    emit(Instr::mov(lv.var.v, tmp));
-                }
-                else
-                {
-                    VReg cur = f.newVReg(vtypeFromTy(lv.t));
-                    emit(Instr::load(cur, lv.mem));
-                    VReg tmp = f.newVReg(VType::I32);
-                    emit(Instr::bin(tmp, cur, BinOp::Sub, one));
-                    emit(Instr::store(lv.mem, tmp));
-                }
+                VReg tmp = f.newVReg();
+                emit(Instr::bin(tmp, vi.v, BinOp::Sub, one));
+                emit(Instr::mov(vi.v, tmp));
                 return;
             }
 
