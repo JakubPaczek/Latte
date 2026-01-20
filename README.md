@@ -23,9 +23,5 @@ Gotowe pliki
 https://bnfc.digitalgrammars.com/tutorial/bnfc-tutorial.html  
 https://www.mimuw.edu.pl/~ben/Zajecia/Mrj2025/Latte/  
 https://bnfc.readthedocs.io/en/latest/lbnf.html
+Writing a C Compiler Nora Sandler - fragmenty kodu
 ChatGPT - szkielet rozwiązania (ustalenie kolejności, wzór klas, struktur, typów), poprawa błędów związanych z rozszerzeniem gramatyki LatteCPP.cf, runtime.c, skrypty bash do uruchamiania testów, Makefile poprawa zależności, komentarze
-
-frontend // bnfc fieles = leksycal analysis, parser -> ast tree
-semantic // semantic analysis files
-latte_error // pretty error
-Env // symbol table and scope management through map stack
