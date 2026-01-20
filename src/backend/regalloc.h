@@ -5,21 +5,36 @@
 #include <unordered_set>
 #include <vector>
 
-enum class PhysReg {
-    EAX, ECX, EDX, EBX, ESI, EDI,
-    R8, R9, R10, R12, R13, R14, R15,
+enum class PhysReg
+{
+    EAX,
+    ECX,
+    EDX,
+    EBX,
+    ESI,
+    EDI,
+    R8,
+    R9,
+    R10,
+    R11,
+    R12,
+    R13,
+    R14,
+    R15,
     NONE
 };
 
 static constexpr int kPhysRegCount = 13; // bez NONE
 
-struct Location {
+struct Location
+{
     bool isReg = true;
     PhysReg reg = PhysReg::NONE;
     int spillSlot = -1; // if !isReg
 };
 
-struct AllocResult {
+struct AllocResult
+{
     // vreg.id -> location
     std::vector<Location> loc;
 
@@ -30,12 +45,14 @@ struct AllocResult {
     std::unordered_set<PhysReg> usedCalleeSaved;
 };
 
-class RegAllocator {
+class RegAllocator
+{
 public:
-    AllocResult allocate(const FunctionIR& f);
+    AllocResult allocate(const FunctionIR &f);
 
 private:
-    struct Interval {
+    struct Interval
+    {
         int v = -1;
         int start = 0;
         int end = 0;
@@ -47,28 +64,29 @@ private:
     };
 
     // Liveness
-    struct BlockSets {
+    struct BlockSets
+    {
         std::unordered_set<int> use, def;
     };
 
-    static std::unordered_set<int> setUnion(const std::unordered_set<int>& a,
-        const std::unordered_set<int>& b);
-    static std::unordered_set<int> setDiff(const std::unordered_set<int>& a,
-        const std::unordered_set<int>& b);
+    static std::unordered_set<int> setUnion(const std::unordered_set<int> &a,
+                                            const std::unordered_set<int> &b);
+    static std::unordered_set<int> setDiff(const std::unordered_set<int> &a,
+                                           const std::unordered_set<int> &b);
 
-    static void computeUseDef(const FunctionIR& f, std::vector<BlockSets>& out);
-    static void computeLiveInOut(const FunctionIR& f,
-        const std::vector<BlockSets>& sets,
-        std::vector<std::unordered_set<int>>& liveIn,
-        std::vector<std::unordered_set<int>>& liveOut);
+    static void computeUseDef(const FunctionIR &f, std::vector<BlockSets> &out);
+    static void computeLiveInOut(const FunctionIR &f,
+                                 const std::vector<BlockSets> &sets,
+                                 std::vector<std::unordered_set<int>> &liveIn,
+                                 std::vector<std::unordered_set<int>> &liveOut);
 
-    static std::unordered_set<int> computeSpansCallRegs(const FunctionIR& f,
-        const std::vector<BlockSets>& sets,
-        const std::vector<std::unordered_set<int>>& liveOut);
+    static std::unordered_set<int> computeSpansCallRegs(const FunctionIR &f,
+                                                        const std::vector<BlockSets> &sets,
+                                                        const std::vector<std::unordered_set<int>> &liveOut);
 
-    static std::vector<Interval> buildIntervals(const FunctionIR& f,
-        const std::vector<std::unordered_set<int>>& liveOut,
-        const std::unordered_set<int>& spansCallRegs);
+    static std::vector<Interval> buildIntervals(const FunctionIR &f,
+                                                const std::vector<std::unordered_set<int>> &liveOut,
+                                                const std::unordered_set<int> &spansCallRegs);
 
     static bool isCalleeSaved(PhysReg r);
     static bool isAllocable(PhysReg r);
@@ -77,7 +95,7 @@ private:
     static std::vector<PhysReg> calleeSavedRegs(); // safe across call
 
     // Linear scan
-    static void expireOld(std::vector<Interval*>& active, int curStart, std::array<bool, kPhysRegCount>& free);
-    static int  regIndex(PhysReg r);
+    static void expireOld(std::vector<Interval *> &active, int curStart, std::array<bool, kPhysRegCount> &free);
+    static int regIndex(PhysReg r);
     static PhysReg idxReg(int i);
 };
