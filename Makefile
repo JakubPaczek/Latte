@@ -125,11 +125,11 @@ $(BACKEND_DIR)/x86_emit.o: $(BACKEND_DIR)/x86_emit.cpp $(BACKEND_DIR)/x86_emit.h
 # -----------------------------
 # Link compiler
 # -----------------------------
-$(TARGET): frontend $(CORE_OBJS) $(SEM_OBJS) $(BACKEND_OBJS) $(FRONTEND_OBJS)
+$(TARGET): frontend $(CORE_OBJS) $(SEM_OBJS) $(FRONTEND_OBJS)
 	$(CXX) $(CXXFLAGS) -I$(FRONTEND_DIR) -I$(SRC_DIR) -I$(SEM_DIR) -I$(BACKEND_DIR) -o $@ \
-	  $(CORE_OBJS) $(SEM_OBJS) $(BACKEND_OBJS) $(FRONTEND_OBJS)
+	  $(CORE_OBJS) $(SEM_OBJS) $(FRONTEND_OBJS)
 
-$(TARGET_X86_64): frontend $(CORE_X86_64_OBJS) $(SEM_OBJS) $(BACKEND_OBJS) $(FRONTEND_OBJS) runtime
+$(TARGET_X86_64): frontend runtime $(CORE_X86_64_OBJS) $(SEM_OBJS) $(BACKEND_OBJS) $(FRONTEND_OBJS)
 	$(CXX) $(CXXFLAGS) -I$(FRONTEND_DIR) -I$(SRC_DIR) -I$(SEM_DIR) -I$(BACKEND_DIR) -o $@ \
 	  $(CORE_X86_64_OBJS) $(SEM_OBJS) $(BACKEND_OBJS) $(FRONTEND_OBJS)
 
