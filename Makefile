@@ -140,7 +140,7 @@ clean:
 	rm -f $(TARGET) $(TARGET_X86_64) \
 	      $(SRC_DIR)/*.o $(SEM_DIR)/*.o $(BACKEND_DIR)/*.o $(RUNTIME_OBJ)
 	$(MAKE) -C $(FRONTEND_DIR) clean || true
-	@find lattests -type f ! -name '*.lat' ! -name '*.output' -delete
+	@find lattests -type f ! -name '*.lat' ! -name '*.output' ! -name '*.input' -delete
 
 distclean: clean
 	rm -rf $(FRONTEND_DIR)
