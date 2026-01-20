@@ -14,7 +14,7 @@ BNFCFLAGS := -m --cpp
 # -----------------------------
 SRC_DIR      := src
 FRONTEND_DIR := $(SRC_DIR)/frontend
-# BACKEND_DIR  := $(SRC_DIR)/backend   # (disabled for now)
+BACKEND_DIR  := $(SRC_DIR)/backend
 SEM_DIR      := $(SRC_DIR)/semantic
 LIB_DIR      := lib
 
@@ -45,15 +45,18 @@ FRONTEND_OBJS := \
 CORE_OBJS := \
   $(SRC_DIR)/latc.o
 
+CORE_X86_64_OBJS := \
+  $(SRC_DIR)/latc_x86_64.o
+
 SEM_OBJS := \
   $(SEM_DIR)/typecheck.o \
   $(SEM_DIR)/env.o \
   $(SEM_DIR)/latte_error.o
 
-# BACKEND_OBJS := \
-#   $(BACKEND_DIR)/codegen.o \
-#   $(BACKEND_DIR)/regalloc.o \
-#   $(BACKEND_DIR)/x86_emit.o
+BACKEND_OBJS := \
+  $(BACKEND_DIR)/codegen.o \
+  $(BACKEND_DIR)/regalloc.o \
+  $(BACKEND_DIR)/x86_emit.o
 
 .PHONY: all clean distclean frontend runtime bnfc
 
@@ -90,7 +93,10 @@ $(RUNTIME_OBJ): $(RUNTIME_SRC)
 # Compile C++ sources
 # -----------------------------
 $(SRC_DIR)/latc.o: $(SRC_DIR)/latc.cpp
-	$(CXX) $(CXXFLAGS) -I$(FRONTEND_DIR) -I$(SRC_DIR) -I$(SEM_DIR) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -I$(FRONTEND_DIR) -I$(SRC_DIR) -I$(SEM_DIR) -I$(BACKEND_DIR) -c $< -o $@
+
+$(SRC_DIR)/latc_x86_64.o: $(SRC_DIR)/latc_x86_64.cpp
+	$(CXX) $(CXXFLAGS) -I$(FRONTEND_DIR) -I$(SRC_DIR) -I$(SEM_DIR) -I$(BACKEND_DIR) -c $< -o $@
 
 $(SEM_DIR)/typecheck.o: $(SEM_DIR)/typecheck.cpp $(SEM_DIR)/typecheck.h
 	$(CXX) $(CXXFLAGS) -I$(FRONTEND_DIR) -I$(SRC_DIR) -I$(SEM_DIR) -c $< -o $@
@@ -102,16 +108,30 @@ $(SEM_DIR)/latte_error.o: $(SEM_DIR)/latte_error.cpp $(SEM_DIR)/latte_error.h
 	$(CXX) $(CXXFLAGS) -I$(SEM_DIR) -c $< -o $@
 
 # -----------------------------
+# Backend objects
+# -----------------------------
+$(BACKEND_DIR)/codegen.o: $(BACKEND_DIR)/codegen.cpp $(BACKEND_DIR)/codegen.h \
+  $(BACKEND_DIR)/ir.h
+	$(CXX) $(CXXFLAGS) -I$(FRONTEND_DIR) -I$(SRC_DIR) -I$(SEM_DIR) -I$(BACKEND_DIR) -c $< -o $@
+
+$(BACKEND_DIR)/regalloc.o: $(BACKEND_DIR)/regalloc.cpp $(BACKEND_DIR)/regalloc.h \
+  $(BACKEND_DIR)/ir.h
+	$(CXX) $(CXXFLAGS) -I$(SRC_DIR) -I$(BACKEND_DIR) -c $< -o $@
+
+$(BACKEND_DIR)/x86_emit.o: $(BACKEND_DIR)/x86_emit.cpp $(BACKEND_DIR)/x86_emit.h \
+  $(BACKEND_DIR)/ir.h $(BACKEND_DIR)/regalloc.h
+	$(CXX) $(CXXFLAGS) -I$(SRC_DIR) -I$(BACKEND_DIR) -c $< -o $@
+
+# -----------------------------
 # Link compiler
 # -----------------------------
-$(TARGET): frontend $(CORE_OBJS) $(SEM_OBJS) $(FRONTEND_OBJS)
-	$(CXX) $(CXXFLAGS) -I$(FRONTEND_DIR) -I$(SRC_DIR) -I$(SEM_DIR) -o $@ \
-	  $(CORE_OBJS) $(SEM_OBJS) $(FRONTEND_OBJS)
+$(TARGET): frontend $(CORE_OBJS) $(SEM_OBJS) $(BACKEND_OBJS) $(FRONTEND_OBJS)
+	$(CXX) $(CXXFLAGS) -I$(FRONTEND_DIR) -I$(SRC_DIR) -I$(SEM_DIR) -I$(BACKEND_DIR) -o $@ \
+	  $(CORE_OBJS) $(SEM_OBJS) $(BACKEND_OBJS) $(FRONTEND_OBJS)
 
-# For now: same binary, different name.
-# Later: replace with a real backend build from src/latc_x86_64.cpp + backend objs.
-$(TARGET_X86_64): $(TARGET)
-	cp -f $(TARGET) $(TARGET_X86_64)
+$(TARGET_X86_64): frontend $(CORE_X86_64_OBJS) $(SEM_OBJS) $(BACKEND_OBJS) $(FRONTEND_OBJS) runtime
+	$(CXX) $(CXXFLAGS) -I$(FRONTEND_DIR) -I$(SRC_DIR) -I$(SEM_DIR) -I$(BACKEND_DIR) -o $@ \
+	  $(CORE_X86_64_OBJS) $(SEM_OBJS) $(BACKEND_OBJS) $(FRONTEND_OBJS)
 
 # -----------------------------
 # Cleanup
@@ -121,11 +141,12 @@ ifeq ($(OS),Windows_NT)
 	-del /Q $(TARGET) $(TARGET_X86_64) 2>NUL || exit 0
 	-del /Q $(SRC_DIR)\*.o 2>NUL || exit 0
 	-del /Q $(SEM_DIR)\*.o 2>NUL || exit 0
+	-del /Q $(BACKEND_DIR)\*.o 2>NUL || exit 0
 	-del /Q $(RUNTIME_OBJ) 2>NUL || exit 0
 	$(MAKE) -C $(FRONTEND_DIR) clean || exit 0
 else
 	rm -f $(TARGET) $(TARGET_X86_64) \
-	      $(SRC_DIR)/*.o $(SEM_DIR)/*.o $(RUNTIME_OBJ)
+	      $(SRC_DIR)/*.o $(SEM_DIR)/*.o $(BACKEND_DIR)/*.o $(RUNTIME_OBJ)
 	$(MAKE) -C $(FRONTEND_DIR) clean || true
 endif
 
